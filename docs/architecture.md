@@ -2,6 +2,16 @@
 
 ## Request flow and boundaries
 
+### Personal accounts
+
+`AUTH_MODE=gitlab` adds encrypted OAuth sessions and per-request identity. Authorization-code + PKCE completes on the backend. A request-scoped `ContextVar`, reset after each request, supplies the user and OAuth bearer credential to the GitLab adapter. Every project/analysis lookup, list and mutation checks ownership. Local-mode rows stay unowned; two users connecting the same GitLab project get separate records. See [OAuth operational boundaries](gitlab-oauth.md).
+
+The landing at `/` is public; `/dashboard` is the workbench. OAuth UI gating uses `/api/auth/me`, but the backend independently authorizes every data request. Session expiry discards private query caches, and logout navigates fully to discard in-memory data. UI visibility is never treated as authorization.
+
+### Landing and 3D
+
+The landing's Three.js illustration uses React Three Fiber and Drei. Its renderer is imported lazily after a WebGL2 capability check and only mounts near the viewport. Animation is demand-driven under reduced-motion/pause settings and stops in hidden tabs/off-screen. DPR is capped at 1.5; there are no remote textures or external model requests. Stage selection has ordinary HTML keyboard controls and a non-WebGL fallback. The visualization is explicitly illustrative, separate from actual GitLab data and the screenshot previews.
+
 `frontend/src/services/api.ts` owns HTTP calls. TanStack Query manages server state; the workspace provider holds the selected connected project. The browser never receives a GitLab or LLM token. nginx supplies the same-origin API proxy in Compose; Vite supplies it in development.
 
 `backend/app/api/routes.py` validates HTTP input, enforces source isolation and coordinates use cases. `services/pipelines.py` loads GitLab/domain context and persists connected projects. `integrations/gitlab.py` is the sole GitLab HTTP boundary. `ai/diagnostician.py` owns provider configuration, trusted system instructions, untrusted prompt data, structured parsing and evidence checks. `core/security.py` masks text before display, model calls or persistence.

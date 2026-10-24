@@ -2,11 +2,13 @@
 
 ## Supported use
 
-This MVP is for a single operator on a local development machine. Compose publishes only loopback ports. Do not expose the application/API publicly or port-forward it onto an untrusted network. `APP_API_KEY` is an optional shared local key, not a multi-user security model. Do not publish secrets in GitHub issues.
+Compose publishes only loopback ports. Anonymous demo and shared-token `AUTH_MODE=local` are single-operator modes and must not be exposed on untrusted networks. `APP_API_KEY` is not a multi-user security model. `AUTH_MODE=gitlab` adds OAuth sessions and per-user ownership, but still requires the [public-hosting prerequisites](docs/gitlab-oauth.md). Do not publish secrets in issues.
 
 ## Data handling
 
-- GitLab/LLM credentials are environment values on the backend only. The UI shows configuration booleans, not values. No GitLab token input exists in the browser.
+- OAuth tokens are Fernet-encrypted in PostgreSQL. Session/state identifiers are hashed; the browser receives only an opaque HttpOnly, SameSite=Lax cookie, Secure on HTTPS. State is single-use and browser-bound; PKCE uses S256. Mutations require an exact Origin match and session-bound CSRF token. A database lease coordinates refresh rotation. Local logout attempts upstream revocation but does not delete private saved history. See the OAuth guide for key loss, cleanup and account-deletion limitations.
+
+- LLM credentials, OAuth application secrets and the optional shared GitLab token are backend environment values. Per-session GitLab OAuth tokens are encrypted in the database, not environment variables. The UI shows configuration booleans and the signed-in username, never credentials. No GitLab token input exists in the browser.
 - HTTPX uses a private-token header, certificate verification and bounded timeouts; it does not follow redirects that could forward credentials. Administrator-configured service URLs cannot contain embedded credentials/query/fragment.
 - Text redaction removes configured credentials and common secret forms before model calls, trace responses, user message storage and structured result persistence. It is heuristic. Inspect/sanitize CI output at the source. Neither personal data nor all encoded/unlabeled secrets are guaranteed to be removed.
 - Third-party LLM calls transmit sanitized excerpts and context to the configured provider. Check your organization's permissions and the provider's retention policy before using real logs. Do not enable LangChain/LangSmith prompt tracing unless explicitly approved.

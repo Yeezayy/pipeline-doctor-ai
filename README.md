@@ -16,7 +16,9 @@ An open-source investigation workbench that turns failed GitLab jobs into eviden
 
 </div>
 
-![Pipeline Doctor dashboard — explicitly simulated demo workspace](docs/screenshots/dashboard.png)
+![Public SaaS landing — product preview uses explicitly simulated data](docs/screenshots/landing.png)
+
+[View the demo dashboard](docs/screenshots/dashboard.png) · [View a diagnosis](docs/screenshots/diagnosis.png)
 
 ## Why this exists
 
@@ -27,6 +29,9 @@ This is a **functional, local-development MVP**, not an autonomous repair agent 
 ## What works today
 
 - **GitLab connection:** discover accessible member projects, connect a project, browse paginated pipelines, inspect details and jobs, fetch traces and the root `.gitlab-ci.yml` at the pipeline's immutable commit.
+- **Personal accounts:** GitLab OAuth + PKCE, encrypted server-side tokens, HttpOnly sessions, CSRF protection and per-user ownership. Operator registration is required: [OAuth guide](docs/gitlab-oauth.md).
+- **Public landing:** a SaaS-style presentation, actual demo captures and entry points to the workbench or account login. The dashboard lives at `/dashboard`.
+- **Interactive 3D:** a Three.js pipeline illustration built with React Three Fiber and Drei. Select stages, orbit and pause motion. It is illustrative, not live GitLab data. The renderer is lazy-loaded, motion stops off-screen/in background tabs, reduced motion is respected, and an accessible fallback works without WebGL.
 - **Structured AI diagnosis:** probable root cause, severity, confidence estimate, exact evidence excerpts, hypotheses, explanation and recommended fixes, validated with Pydantic through LangChain.
 - **Contextual chat:** follow-up questions using the selected diagnosis, pipeline metadata and recent conversation; no claim of access to the full original trace.
 - **History:** persistent analyses and conversations, individual deletion and configurable retention.
@@ -102,6 +107,8 @@ Demo and live projects/analyses are isolated by source. Switching modes never si
 
 ## Connect a real GitLab project
 
+**For visitors connecting their own accounts**, follow [the OAuth setup](docs/gitlab-oauth.md): register one application, set `AUTH_MODE=gitlab`, and configure its credentials and encryption key server-side. Visitors authorize through GitLab, without pasting a token. The instructions below describe the alternative **local-only shared-token mode** (`AUTH_MODE=local`).
+
 1. Create a **read-only** personal or project access token with `read_api` and appropriate project membership. Depending on your GitLab version/token type, repository file reads may additionally require `read_repository`. Do not grant write access.
 2. Edit the server environment, never frontend variables:
 
@@ -134,6 +141,10 @@ All variables in `.env.example` are backend/Compose configuration; no provider s
 - `GITLAB_URL`, `GITLAB_TOKEN`, `GITLAB_PROJECT_ID`: GitLab instance, read-only token and optional initial project.
 - `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`: compatible provider configuration.
 - `APP_API_KEY`: optional shared local API protection. When set, enter it in **Settings → Local API access**. Only this application key is kept in tab-scoped `sessionStorage`.
+- `AUTH_MODE`: `local` (default) or `gitlab` (per-user OAuth, requiring `DEMO_MODE=false`). OAuth never falls back to the shared token.
+- `PUBLIC_APP_URL`: exact browser-facing origin, determining the callback and allowed mutation Origin.
+- `GITLAB_CLIENT_ID`, `GITLAB_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`: required OAuth server configuration. The key must be a persistent Fernet key. Never use frontend variables for these values.
+- `SESSION_DAYS`: browser session lifetime, default `7`; access tokens refresh independently.
 - `CORS_ORIGINS`: JSON array; defaults to the two local Vite origins. Compose uses same-origin nginx proxying.
 - `RETENTION_DAYS`: default `30`, range `1–365`.
 - `LOG_MAX_CHARS`: default `16000`, range `1000–64000`; redacted head/tail excerpt. CI config has a separate 8000-character budget; user context is limited to 4000 characters.
@@ -155,7 +166,9 @@ flowchart LR
   Services -. explicit demo mode .-> Fixtures[Curated simulated incidents]
 ```
 
-Frontend: React 19, TypeScript, Vite, Tailwind CSS v4, a shadcn-style Radix/CVA Button, TanStack Query, React Router and Lucide. Backend: Python 3.12+, FastAPI, Pydantic v2, LangChain, SQLAlchemy, Alembic and HTTPX. Infrastructure: PostgreSQL 17, Docker Compose, nginx and GitHub Actions. Both dependency lockfiles are committed. There is no unnecessary multi-agent layer, vector database or fake background job system.
+Frontend: React 19, TypeScript, Vite, Tailwind CSS v4, a shadcn-style Radix/CVA Button, TanStack Query, React Router, Lucide, Three.js, React Three Fiber and Drei. Backend: Python 3.12+, FastAPI, Pydantic v2, LangChain, SQLAlchemy, Alembic, HTTPX and cryptography/Fernet for OAuth credentials. Infrastructure: PostgreSQL 17, Docker Compose, nginx and GitHub Actions. Both dependency lockfiles are committed. There is no unnecessary multi-agent layer, vector database or fake background job system.
+
+The 3D renderer is a separate lazy chunk (roughly 254 KB gzip with the current lockfile), not part of the initial application bundle. Vite reports its size as a warning. The page remains functional without WebGL; the canvas pauses when hidden and caps rendering pixel ratio at 1.5. Chromium tests exercise a real software WebGL renderer and the non-WebGL fallback.
 
 See [architecture decisions and tradeoffs](docs/architecture.md) and [security/data policy](SECURITY.md).
 
@@ -180,16 +193,18 @@ npm run test:e2e
 
 Browser tests require the demo API running on `127.0.0.1:8000`, with Alembic applied. Playwright starts Vite automatically (or reuses it locally). Tests cover schema bounds, masked secrets, GitLab mocked HTTP responses, timeouts, trace size caps, health, optional authentication, six demo incidents, mocked live diagnosis/chat, source isolation, deletion/retention, migration upgrade/downgrade and desktop/mobile browser flows. No real GitLab/LLM token is needed.
 
+To test Compose directly, run `PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080 npm run test:e2e` from `frontend/`. OAuth has mocked flow/security/isolation tests and a browser redirect test; a live login requires your registered application.
+
 CI runs Ruff, the backend suite against PostgreSQL (plus a SQLite migration test), migration drift checks, TypeScript, production build and Chromium end-to-end tests. Never point `TEST_DATABASE_URL` at a database you want to keep: **the test suite drops application tables**.
 
 ## Safety and limitations
 
-- **Local-only MVP, not internet-ready authentication.** Do not expose nginx, the API or API docs publicly. A shared application key is not user accounts, tenant isolation or a rate-limiting gateway. Production SSO, TLS, quotas and policy controls are future work.
+- **Deployment boundary:** demo/shared-token mode must stay local. OAuth adds real sessions and ownership checks, but public hosting still needs TLS, admission/abuse controls, per-user LLM quotas and a deployment review. Compose still binds only loopback ports. See [OAuth deployment requirements](docs/gitlab-oauth.md).
 - Masking covers configured credentials, common assignments, credential URLs, bearer/basic values, common token prefixes, AWS access key IDs, JWTs and PEM private keys. It is **best effort**, not a guarantee. Unlabeled/encoded/fragmented secrets and personal data can remain. Use sanitized CI logs and a provider permitted by your organization's data policy.
 - Only sanitized diagnostic evidence, pipeline metadata and conversations are persisted, **not raw traces or CI files**. Metadata/evidence can still be sensitive. Retention is enforced at startup and analysis read/create operations, not by a standalone scheduled cleanup service. Individual delete cascades to messages; database backups need their own expiry policy.
 - Logs/files are untrusted. The model is instructed to ignore embedded instructions; evidence quotes are checked against supplied excerpts. This reduces risk but **does not solve prompt injection**. Confidence is not calibrated. All fixes remain explicitly untested.
 - Traces over **2 MB are rejected** before analysis; smaller traces are masked and reduced to a head/tail excerpt. CI file reads have a 500 KB acceptance cap. Character budgets are not exact token accounting.
-- One GitLab instance and one configured provider per deployment. No OAuth per user, streaming chat, job retries, automatic YAML changes, remote includes resolution, CI Lint or merge requests. Use a separate database when changing GitLab instances to avoid ID collisions.
+- One GitLab instance and one configured LLM provider per deployment. OAuth personal accounts are supported; streaming chat, job retries, automatic YAML changes, remote includes resolution, CI Lint and merge requests are not. Use a separate database when changing GitLab instances.
 - Requests are synchronous HTTP operations with async external calls; two concurrent AI investigations per API process. No durable worker queue or distributed quota. Conversations are limited to 50 exchanges, with only the last 10 messages supplied to the model.
 - Real integration code is tested with mocks; a live GitLab/provider smoke test requires your own authorized credentials. The demo does not prove a model's diagnostic accuracy.
 

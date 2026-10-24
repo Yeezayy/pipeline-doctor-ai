@@ -10,6 +10,8 @@ This roadmap describes real next increments, not scheduled artificial activity. 
 - [x] Contextual chat and persisted history/deletion
 - [x] Six explicitly simulated incidents without API credentials
 - [x] Responsive workbench, PostgreSQL/Alembic, Compose and token-free CI
+- [x] Public SaaS landing and explicit demo/workbench entry points
+- [x] GitLab OAuth + PKCE, encrypted sessions and per-user ownership (operator registration required)
 - [ ] Authorized real-instance/provider smoke test and documented compatibility matrix
 - [ ] Broader credential masking corpus and adversarial prompt evaluation
 - [ ] Expand keyboard/screen-reader and visual regression coverage
@@ -30,7 +32,7 @@ Each increment should contain working code, focused tests, documentation and a c
 - Durable workers for investigations, distributed quotas and cost tracking
 - Retrieval over approved docs and sanitized historical incidents
 - Human-rated diagnostic accuracy and regression monitoring
-- OIDC, authorization, tenant isolation, secure sessions and access auditing
+- Organization-level authorization, admission policy, access auditing and independent security review beyond initial account isolation
 - Metrics, telemetry redaction, automated retention and backup restore drills
 - Hardened Kubernetes deployment after security prerequisites
 - Evaluate GitHub Actions/Jenkins only after GitLab workflows are reliable
