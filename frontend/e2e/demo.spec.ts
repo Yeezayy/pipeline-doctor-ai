@@ -65,3 +65,30 @@ test("mobile navigation and settings", async ({ page }) => {
   );
   expect(overflow).toBe(false);
 });
+
+test("recover from an API key challenge without reloading the page", async ({
+  page,
+}) => {
+  await page.route("**/api/**", async (route) => {
+    if (
+      route.request().headers()["authorization"] !== "Bearer browser-test-key"
+    ) {
+      await route.fulfill({
+        status: 401,
+        json: { detail: "API key required; enter it in Settings" },
+      });
+    } else {
+      await route.continue();
+    }
+  });
+  await page.goto("/settings");
+  await page.getByLabel("Application API key").fill("browser-test-key");
+  await page.getByRole("button", { name: "Save for this tab" }).click();
+  await expect(
+    page.getByText("Demo · fixtures only", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Test connection" }).click();
+  await expect(
+    page.getByText("Simulated connection; no external requests"),
+  ).toBeVisible();
+});
