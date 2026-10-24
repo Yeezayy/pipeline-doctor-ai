@@ -75,7 +75,10 @@ jobs:
         working-directory: backend
       - run: uv run alembic upgrade head
         working-directory: backend
-      - run: uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log > /tmp/doctor-api.log 2>&1 &
+      - name: Start demo API without holding the uv cache lock
+        run: |
+          .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log > "$RUNNER_TEMP/doctor-api.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/doctor-api.pid"
         working-directory: backend
       - run: npm ci
         working-directory: frontend
@@ -85,6 +88,12 @@ jobs:
         run: python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=10)"
       - run: npm run test:e2e
         working-directory: frontend
+      - name: Stop demo API before dependency-cache cleanup
+        if: always()
+        run: |
+          if test -f "$RUNNER_TEMP/doctor-api.pid"; then
+            kill "$(cat "$RUNNER_TEMP/doctor-api.pid")" || true
+          fi
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
