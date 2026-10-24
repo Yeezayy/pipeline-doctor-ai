@@ -7,12 +7,16 @@
 
 An open-source investigation workbench that turns failed GitLab jobs into evidence-backed diagnoses — without handing an AI the keys to your infrastructure.
 
+**Public website = landing + simulated demo. Real GitLab pipelines run in your local installation.** No GitLab account, backend or provider key is needed for the public demo. See [the public/local split](docs/public-site.md).
+
 [![CI](https://github.com/Yeezayy/pipeline-doctor-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Yeezayy/pipeline-doctor-ai/actions/workflows/ci.yml)
 ![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 [![MIT License](https://img.shields.io/badge/License-MIT-a8e1bf)](LICENSE)
 
 [Quick start](#quick-start) · [Live integration](#connect-a-real-gitlab-project) · [Architecture](docs/architecture.md) · [Security](SECURITY.md) · [Roadmap](#roadmap)
+
+[Public demo](https://yeezayy.github.io/pipeline-doctor-ai/)
 
 </div>
 
@@ -107,7 +111,9 @@ Demo and live projects/analyses are isolated by source. Switching modes never si
 
 ## Connect a real GitLab project
 
-**For visitors connecting their own accounts**, follow [the OAuth setup](docs/gitlab-oauth.md): register one application, set `AUTH_MODE=gitlab`, and configure its credentials and encryption key server-side. Visitors authorize through GitLab, without pasting a token. The instructions below describe the alternative **local-only shared-token mode** (`AUTH_MODE=local`).
+**The intended user-friendly local flow is public OAuth + PKCE:** users run the app locally and authorize their own GitLab account, with no personal token or client secret to paste. The maintainer must first register and distribute the public Application ID; it is currently unset. See [the exact maintainer and user steps](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The static website is never involved in real GitLab authentication.
+
+For an operator deliberately choosing a confidential OAuth client, the alternative [server setup](docs/gitlab-oauth.md#alternative-confidential-server-application) still exists. It is not needed by public demo visitors. The instructions below describe the separate **local-only shared-token mode** (`AUTH_MODE=local`).
 
 1. Create a **read-only** personal or project access token with `read_api` and appropriate project membership. Depending on your GitLab version/token type, repository file reads may additionally require `read_repository`. Do not grant write access.
 2. Edit the server environment, never frontend variables:
@@ -143,7 +149,8 @@ All variables in `.env.example` are backend/Compose configuration; no provider s
 - `APP_API_KEY`: optional shared local API protection. When set, enter it in **Settings → Local API access**. Only this application key is kept in tab-scoped `sessionStorage`.
 - `AUTH_MODE`: `local` (default) or `gitlab` (per-user OAuth, requiring `DEMO_MODE=false`). OAuth never falls back to the shared token.
 - `PUBLIC_APP_URL`: exact browser-facing origin, determining the callback and allowed mutation Origin.
-- `GITLAB_CLIENT_ID`, `GITLAB_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`: required OAuth server configuration. The key must be a persistent Fernet key. Never use frontend variables for these values.
+- `GITLAB_CLIENT_ID`, `GITLAB_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`: explicit confidential-client configuration; the public local PKCE mode does not require a client secret and can generate its own private encryption key. Only a public application ID may be distributed; keys and client secrets must never be put in frontend variables.
+- `GITLAB_OAUTH_PUBLIC`: when true, public PKCE sends no client secret and can load the maintainer's public registration ID from `app/core/gitlab-registration.json`. On loopback, the encryption key can be generated privately in `OAUTH_KEY_FILE`; `compose.local.yaml` persists it in a private named volume. Confidential server mode retains the explicit-secret/key requirements above.
 - `SESSION_DAYS`: browser session lifetime, default `7`; access tokens refresh independently.
 - `CORS_ORIGINS`: JSON array; defaults to the two local Vite origins. Compose uses same-origin nginx proxying.
 - `RETENTION_DAYS`: default `30`, range `1–365`.
@@ -173,6 +180,8 @@ The 3D renderer is a separate lazy chunk (roughly 254 KB gzip with the current l
 See [architecture decisions and tradeoffs](docs/architecture.md) and [security/data policy](SECURITY.md).
 
 ## Quality checks
+
+For the backend-free public site, run `VITE_BASE_PATH=/pipeline-doctor-ai/ npm run build:public` and `npm run test:public` from `frontend/`. The dedicated Pages workflow publishes only this build after its browser checks. Domain setup is described in [docs/public-site.md](docs/public-site.md).
 
 ```bash
 cd backend

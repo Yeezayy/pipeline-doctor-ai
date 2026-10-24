@@ -1,5 +1,36 @@
 # Personal GitLab account connection
 
+## Simplified local account login: public client + PKCE
+
+The public website is only a presentation/demo: **no GitLab login happens there**. Real accounts are connected in the locally running application, and their tokens remain in the local database.
+
+To avoid configuration for every user, the **project maintainer** must first register a GitLab application once:
+
+- Name: Pipeline Doctor AI
+- **Confidential: disabled** (public OAuth client)
+- Callback: `http://localhost:8080/api/auth/gitlab/callback`
+- Scopes: `read_user`, `read_api`, `read_repository`
+
+Copy only the application's **public Application ID** into `backend/app/core/gitlab-registration.json`, under `client_id`. This file contains no secret and can be distributed with releases. Its `instance_url` binds that registration to one GitLab instance. A different self-managed instance needs its own registration.
+
+**The registration ID is currently empty: the maintainer must supply a real ID before personal login can work.** No code can invent a valid GitLab app registration. Do not ask ordinary users to create it.
+
+Once the registered ID is distributed, users can start the local account edition without creating a `.env` or personal token (Docker Compose 2.24+):
+
+```bash
+docker compose -f compose.yaml -f compose.local.yaml up --build -d
+```
+
+They open **http://localhost:8080**, click **Continue with GitLab**, and authorize on GitLab. The local backend exchanges the code using S256 PKCE and **no client secret**, including during refresh. The encryption key is generated privately on first start and reused from the `doctor-local-state` volume. Do not delete that volume if you want to retain readable encrypted credentials. Existing explicit `TOKEN_ENCRYPTION_KEY` values still take precedence. `OAUTH_KEY_FILE` selects the private file for non-Docker loopback deployments.
+
+The default `docker compose up` remains a local simulated demo, not a silent real connection. The local account edition fails clearly while the maintainer registration is missing. Keep the fixed callback port/hostname or register the exact alternative callback. `localhost` and `127.0.0.1` are not interchangeable cookie origins.
+
+Live AI calls still require a provider configured by the local operator. GitLab browsing does not require an LLM key. This does not move pipeline processing or credentials to GitHub Pages.
+
+## Alternative: confidential server application
+
+The setup below remains available for an operator explicitly running a confidential server client. It is **not** a requirement for visitors of the public demo or for users of the pre-registered public local client. Leave `GITLAB_OAUTH_PUBLIC=false` for this alternative.
+
 `AUTH_MODE=gitlab` gives each visitor their own GitLab login, projects and saved diagnoses. It is separate from the anonymous demo and shared-token local mode. An administrator registers the OAuth application once; visitors never paste personal access tokens.
 
 ## Register the application
