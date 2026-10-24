@@ -12,7 +12,7 @@ An open-source investigation workbench that turns failed GitLab jobs into eviden
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 [![MIT License](https://img.shields.io/badge/License-MIT-a8e1bf)](LICENSE)
 
-[Quick start](#quick-start) · [Live integration](#connect-a-real-gitlab-project) · [Architecture](docs/architecture.md) · [Security](SECURITY.md) · [Roadmap](docs/roadmap.md)
+[Quick start](#quick-start) · [Live integration](#connect-a-real-gitlab-project) · [Architecture](docs/architecture.md) · [Security](SECURITY.md) · [Roadmap](#roadmap)
 
 </div>
 
@@ -214,7 +214,7 @@ CI runs Ruff, the backend suite against PostgreSQL (plus a SQLite migration test
 - **V2 — AI Fix Assistant:** reviewable YAML diffs, GitLab CI Lint validation, approved merge requests and fix history.
 - **V3 — Advanced DevOps:** webhooks, queued investigations, documentation/incident RAG, diagnostic evaluation metrics, monitoring, hardened Kubernetes deployment and possible GitHub Actions/Jenkins support.
 
-See [the incremental roadmap](docs/roadmap.md). Planned features are not claimed as implemented. Contributions welcome: [CONTRIBUTING.md](CONTRIBUTING.md).
+Planned features are not claimed as implemented. Contributions welcome: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
