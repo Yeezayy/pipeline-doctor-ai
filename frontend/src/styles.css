@@ -891,6 +891,30 @@ footer {
   padding: 15px 20px;
   gap: 12px;
 }
+.pipeline-search {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 20px 16px;
+}
+.pipeline-search .search-form {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.pipeline-search .search-form input {
+  min-width: 0;
+}
+.pipeline-search .search-form svg {
+  flex-shrink: 0;
+}
+.log-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
 .tabs {
   display: flex;
   gap: 4px;

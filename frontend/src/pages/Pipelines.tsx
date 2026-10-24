@@ -4,7 +4,10 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
+  Copy,
   RefreshCw,
+  Search,
   ShieldCheck,
   Sparkles,
   Terminal,
@@ -24,11 +27,22 @@ import {
 export function Pipelines() {
   const { project, loading, error } = useWorkspace();
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const query = useQuery({
     queryKey: ["pipelines", project?.id, page],
     queryFn: () => api.pipelines(project!.id, page),
     enabled: !!project,
+  });
+  const term = search.trim().toLowerCase();
+  const visiblePipelines = (query.data || []).filter((pipeline) => {
+    const matchesStatus = filter === "all" || pipeline.status === filter;
+    const matchesSearch =
+      !term ||
+      [pipeline.ref, pipeline.sha, `#${pipeline.id}`].some((value) =>
+        value.toLowerCase().includes(term),
+      );
+    return matchesStatus && matchesSearch;
   });
   if (loading) return <Loading />;
   if (error) return <ErrorState error={error} />;
@@ -64,6 +78,7 @@ export function Pipelines() {
                 <button
                   key={f}
                   className={filter === f ? "selected" : ""}
+                  aria-pressed={filter === f}
                   onClick={() => setFilter(f)}
                 >
                   {f === "all"
@@ -78,20 +93,40 @@ export function Pipelines() {
               Page {page} · {query.data?.length || 0} runs
             </span>
           </div>
+          <div className="pipeline-search">
+            <div className="search-form">
+              <Search size={15} aria-hidden="true" />
+              <label htmlFor="pipeline-search" className="sr-only">
+                Search pipelines
+              </label>
+              <input
+                id="pipeline-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search this page by branch, commit or pipeline ID…"
+              />
+              {search && (
+                <Button variant="ghost" size="sm" onClick={() => setSearch("")}>
+                  Clear search
+                </Button>
+              )}
+            </div>
+            <span className="muted small" role="status">
+              {visiblePipelines.length} matching runs on this page
+            </span>
+          </div>
           {query.isLoading ? (
             <Loading />
-          ) : query.data?.filter((p) => filter === "all" || p.status === filter)
-              .length ? (
+          ) : visiblePipelines.length ? (
             <PipelineTable
-              pipelines={query.data.filter(
-                (p) => filter === "all" || p.status === filter,
-              )}
+              pipelines={visiblePipelines}
               projectId={project.id}
             />
           ) : (
             <Empty
               title="No pipelines in this view"
-              description="Try a different status, page, or refresh after your next GitLab run."
+              description="Try a different search, status or page. Search only covers the current fetched page."
             />
           )}
           <div className="pagination">
@@ -148,6 +183,19 @@ export function PipelineDetail() {
       navigate(`/diagnosis/${a.id}`);
     },
   });
+  const copyLogs = useMutation({
+    mutationFn: async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        return text;
+      } catch {
+        throw new Error(
+          "Could not access the clipboard. Select and copy the displayed log excerpt instead.",
+        );
+      }
+    },
+  });
+  const copied = copyLogs.isSuccess && copyLogs.data === trace.data?.text;
   return (
     <>
       <Link className="back-link" to="/pipelines">
@@ -205,12 +253,33 @@ export function PipelineDetail() {
                     <Terminal size={15} />
                     {job?.name || "Job output"}
                   </h2>
-                  <span className="secure-label">
-                    <ShieldCheck size={13} />
-                    Secrets masked
-                  </span>
+                  <div className="log-actions">
+                    <span className="secure-label">
+                      <ShieldCheck size={13} />
+                      Secrets masked
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={
+                        !trace.data?.text ||
+                        trace.isFetching ||
+                        !!trace.error ||
+                        copyLogs.isPending
+                      }
+                      onClick={() => {
+                        if (trace.data?.text) copyLogs.mutate(trace.data.text);
+                      }}
+                    >
+                      {copied ? <Check size={13} /> : <Copy size={13} />}
+                      <span aria-live="polite">
+                        {copied ? "Logs copied" : "Copy logs"}
+                      </span>
+                    </Button>
+                  </div>
                 </div>
                 <ErrorState error={trace.error} />
+                <ErrorState error={copyLogs.error} />
                 {trace.isLoading ? (
                   <Loading text="Fetching sanitized job trace…" />
                 ) : (

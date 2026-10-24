@@ -92,3 +92,68 @@ test("recover from an API key challenge without reloading the page", async ({
     page.getByText("Simulated connection; no external requests"),
   ).toBeVisible();
 });
+
+test("search pipelines by branch, commit and ID while preserving status filters", async ({
+  page,
+}) => {
+  await page.goto("/pipelines");
+  const search = page.getByRole("searchbox", { name: "Search pipelines" });
+  await expect(page.locator("tbody tr")).toHaveCount(9);
+  await search.fill("FEAT/CHECKOUT");
+  await expect(page.locator("tbody tr")).toHaveCount(3);
+  await page.getByRole("button", { name: "Failed", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await search.fill("#1040");
+  await expect(
+    page.getByRole("heading", { name: "No pipelines in this view" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(6);
+  const commit = await page
+    .locator("tbody tr")
+    .first()
+    .locator(".commit")
+    .innerText();
+  await search.fill(commit);
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await search.fill("#1048");
+  await expect(
+    page.getByRole("link", { name: "#1048", exact: true }),
+  ).toBeVisible();
+});
+
+test("copy only the sanitized excerpt displayed in the log viewer", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("link", { name: "Inspect pipelines" }).click();
+  await page.getByRole("link", { name: "#1048", exact: true }).click();
+  await page.getByRole("button", { name: "Copy logs", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Logs copied" })).toBeVisible();
+  const displayed = await page.locator(".log-view").innerText();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    displayed,
+  );
+});
+
+test("explain clipboard failures without hiding the job trace", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: () => Promise.reject(new Error("Permission denied")),
+      },
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Inspect pipelines" }).click();
+  await page.getByRole("link", { name: "#1048", exact: true }).click();
+  await page.getByRole("button", { name: "Copy logs", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Could not access the clipboard",
+  );
+  await expect(page.locator(".log-view")).toContainText("open Dockerfile");
+});

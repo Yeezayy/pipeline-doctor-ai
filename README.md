@@ -30,7 +30,8 @@ This is a **functional, local-development MVP**, not an autonomous repair agent 
 - **Structured AI diagnosis:** probable root cause, severity, confidence estimate, exact evidence excerpts, hypotheses, explanation and recommended fixes, validated with Pydantic through LangChain.
 - **Contextual chat:** follow-up questions using the selected diagnosis, pipeline metadata and recent conversation; no claim of access to the full original trace.
 - **History:** persistent analyses and conversations, individual deletion and configurable retention.
-- **Focused UI:** responsive dark workbench, project switching, pipeline status filters, loading/error/empty states and explicit demo/live labels.
+- **Focused UI:** responsive dark workbench, project switching, pipeline status filters, current-page search by branch/commit/pipeline ID, loading/error/empty states and explicit demo/live labels.
+- **Shareable log excerpts:** copy exactly the sanitized trace displayed in the workbench, with explicit feedback when clipboard access is unavailable. Masking is best effort; review the excerpt before sharing it.
 - **Local safety defaults:** server-side credentials, secret masking, log budgets, optional application API key, loopback-only published ports and no automatic execution or repository writes.
 - **Reproducible demo:** six curated incidents, deterministic example diagnoses and explicitly fixed example chat replies. No GitLab account or paid API required.
 
