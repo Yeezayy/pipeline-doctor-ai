@@ -102,8 +102,7 @@ async def logout(request: Request, response: Response, db: Session = Depends(get
             await oauth.provider_request(
                 "/oauth/revoke",
                 data={
-                    "client_id": get_settings().gitlab_client_id,
-                    "client_secret": get_settings().gitlab_client_secret,
+                    **oauth.client_credentials(),
                     "token": oauth.decrypt(access_cipher),
                 },
             )

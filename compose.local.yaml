@@ -1,0 +1,17 @@
+# Personal local OAuth. Maintainer registers the public app once before release.
+services:
+  migrate:
+    environment:
+      AUTH_MODE: local
+      DEMO_MODE: "true"
+  backend:
+    environment:
+      AUTH_MODE: gitlab
+      DEMO_MODE: "false"
+      GITLAB_OAUTH_PUBLIC: "true"
+      PUBLIC_APP_URL: http://localhost:8080
+      OAUTH_KEY_FILE: /app/state/oauth.key
+    volumes:
+      - doctor-local-state:/app/state
+volumes:
+  doctor-local-state:

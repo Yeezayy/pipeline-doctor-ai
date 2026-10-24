@@ -31,6 +31,7 @@ def clean_database():
     settings.auth_mode = "local"
     settings.gitlab_client_id = ""
     settings.gitlab_client_secret = ""
+    settings.gitlab_oauth_public = False
     settings.token_encryption_key = ""
     settings.public_app_url = Settings().public_app_url
     settings.gitlab_url = Settings().gitlab_url

@@ -17,7 +17,11 @@ services:
 
   migrate:
     build: ./backend
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://doctor:doctor@db:5432/doctor}
     command: ["uv", "run", "--no-sync", "alembic", "upgrade", "head"]
     depends_on:
       db:
@@ -25,7 +29,11 @@ services:
 
   backend:
     build: ./backend
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://doctor:doctor@db:5432/doctor}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:

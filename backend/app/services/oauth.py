@@ -95,12 +95,10 @@ async def provider_request(path: str, *, data=None, token: str = ""):
 
 
 async def tokens(data: dict) -> dict:
-    settings = get_settings()
     result = await provider_request(
         "/oauth/token",
         data={
-            "client_id": settings.gitlab_client_id,
-            "client_secret": settings.gitlab_client_secret,
+            **client_credentials(),
             "redirect_uri": callback_uri(),
             **data,
         },
@@ -119,6 +117,14 @@ async def tokens(data: dict) -> dict:
     if "scope" in result and not set(SCOPES.split()).issubset(str(result["scope"]).split()):
         raise HTTPException(401, "GitLab did not grant the required read-only scopes")
     return result
+
+
+def client_credentials() -> dict[str, str]:
+    settings = get_settings()
+    credentials = {"client_id": settings.gitlab_client_id}
+    if not settings.gitlab_oauth_public:
+        credentials["client_secret"] = settings.gitlab_client_secret
+    return credentials
 
 
 def start(db: Session) -> tuple[str, str]:
