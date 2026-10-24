@@ -17,7 +17,7 @@ test("demo: pipeline → sanitized trace → diagnosis → chat → history", as
     { times: 1 },
   );
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/dashboard");
   await expect(
     page.getByRole("heading", { name: "Less firefighting. More shipping." }),
   ).toBeVisible();
@@ -50,7 +50,7 @@ test("demo: pipeline → sanitized trace → diagnosis → chat → history", as
 
 test("mobile navigation and settings", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(
@@ -127,7 +127,7 @@ test("copy only the sanitized excerpt displayed in the log viewer", async ({
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByRole("link", { name: "Inspect pipelines" }).click();
   await page.getByRole("link", { name: "#1048", exact: true }).click();
   await page.getByRole("button", { name: "Copy logs", exact: true }).click();
@@ -148,7 +148,7 @@ test("explain clipboard failures without hiding the job trace", async ({
       },
     });
   });
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByRole("link", { name: "Inspect pipelines" }).click();
   await page.getByRole("link", { name: "#1048", exact: true }).click();
   await page.getByRole("button", { name: "Copy logs", exact: true }).click();

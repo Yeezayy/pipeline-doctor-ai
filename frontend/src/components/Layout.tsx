@@ -14,9 +14,10 @@ import {
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { useState } from "react";
 import { useWorkspace } from "../hooks/useWorkspace";
+import { GitLabAccount } from "./GitLabAccount";
 
 const navigation = [
-  { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
+  { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/pipelines", label: "Pipelines", icon: GitBranch },
   { to: "/diagnosis", label: "AI Diagnosis", icon: Sparkles },
   { to: "/history", label: "Analysis history", icon: History },
@@ -24,12 +25,12 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { project, projects, selectProject, settings } = useWorkspace();
+  const { project, projects, selectProject, settings, auth } = useWorkspace();
   const [open, setOpen] = useState(false);
   return (
     <div className="app-shell">
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
-        <Link to="/" className="brand">
+        <Link to="/dashboard" className="brand">
           <span className="brand-icon">
             <Activity size={23} />
           </span>
@@ -155,7 +156,11 @@ export function Layout() {
           </div>
         )}
         <main>
-          <Outlet />
+          {settings?.auth_mode === "gitlab" && !auth?.authenticated ? (
+            <GitLabAccount gate />
+          ) : (
+            <Outlet />
+          )}
         </main>
         <footer>
           Built for the moments when CI says no.

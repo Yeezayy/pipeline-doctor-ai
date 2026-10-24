@@ -9,6 +9,7 @@ import { Pipelines, PipelineDetail } from "./pages/Pipelines";
 import { Diagnosis } from "./pages/Diagnosis";
 import { History } from "./pages/History";
 import { Settings } from "./pages/Settings";
+import { Landing } from "./pages/Landing";
 import "./styles.css";
 
 const client = new QueryClient({
@@ -21,8 +22,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <WorkspaceProvider>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route element={<Layout />}>
-              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
               <Route path="pipelines" element={<Pipelines />} />
               <Route
                 path="pipelines/:projectId/:pipelineId"
@@ -37,7 +39,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 element={
                   <div className="state">
                     <h1>Page not found.</h1>
-                    <Link to="/">Back to the workbench →</Link>
+                    <Link to="/dashboard">Back to the workbench →</Link>
                   </div>
                 }
               />

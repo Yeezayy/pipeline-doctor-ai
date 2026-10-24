@@ -15,6 +15,7 @@ import { useWorkspace } from "../hooks/useWorkspace";
 import { api } from "../services/api";
 import { Button } from "../components/ui/button";
 import { ErrorState, Loading, PageHeading } from "../components/common";
+import { GitLabAccount } from "../components/GitLabAccount";
 
 export function Settings() {
   const { settings, error, selectProject } = useWorkspace();
@@ -46,57 +47,66 @@ export function Settings() {
       />
       <ErrorState error={error} />
       <div className="settings-grid">
-        <section className="panel settings-card">
-          <div className="settings-title">
-            <span className="settings-icon">
-              <GitBranch size={21} />
-            </span>
-            <div>
-              <h2>GitLab integration</h2>
-              <p>Projects, pipelines and job traces.</p>
+        {settings?.auth_mode === "gitlab" ? (
+          <GitLabAccount />
+        ) : (
+          <section className="panel settings-card">
+            <div className="settings-title">
+              <span className="settings-icon">
+                <GitBranch size={21} />
+              </span>
+              <div>
+                <h2>GitLab integration</h2>
+                <p>Projects, pipelines and job traces.</p>
+              </div>
+              <span className="context-tag">
+                {settings?.demo_mode
+                  ? "Simulated"
+                  : settings?.gitlab_configured
+                    ? "Configured"
+                    : "Not configured"}
+              </span>
             </div>
-            <span className="context-tag">
-              {settings?.demo_mode
-                ? "Simulated"
-                : settings?.gitlab_configured
-                  ? "Configured"
-                  : "Not configured"}
-            </span>
-          </div>
-          <dl>
-            <dt>Instance URL</dt>
-            <dd>{settings?.gitlab_url || "Unavailable"}</dd>
-            <dt>Server credential</dt>
-            <dd>
-              {settings?.gitlab_configured ? "Configured · hidden" : "Not set"}
-            </dd>
-            <dt>Current mode</dt>
-            <dd>{settings?.demo_mode ? "Demo · fixtures only" : "Live API"}</dd>
-          </dl>
-          <div className="configuration-note">
-            <ShieldCheck size={16} />
-            <p>
-              Set <code>GITLAB_URL</code> and <code>GITLAB_TOKEN</code> in the
-              backend environment. Set <code>DEMO_MODE=false</code> and restart
-              the backend to use real data.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => connection.mutate()}
-            disabled={connection.isPending}
-          >
-            <Plug size={14} />
-            {connection.isPending ? "Checking…" : "Test connection"}
-          </Button>
-          {connection.data && (
-            <p className="success-message">
-              <Check size={14} />
-              {connection.data.message}
-            </p>
-          )}
-          <ErrorState error={connection.error} />
-        </section>
+            <dl>
+              <dt>Instance URL</dt>
+              <dd>{settings?.gitlab_url || "Unavailable"}</dd>
+              <dt>Server credential</dt>
+              <dd>
+                {settings?.gitlab_configured
+                  ? "Configured · hidden"
+                  : "Not set"}
+              </dd>
+              <dt>Current mode</dt>
+              <dd>
+                {settings?.demo_mode ? "Demo · fixtures only" : "Live API"}
+              </dd>
+            </dl>
+            <div className="configuration-note">
+              <ShieldCheck size={16} />
+              <p>
+                Personal account login requires <code>AUTH_MODE=gitlab</code>, a
+                registered OAuth application and <code>DEMO_MODE=false</code>.
+                See the README for setup. The shared <code>GITLAB_TOKEN</code>{" "}
+                remains a local-only fallback.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => connection.mutate()}
+              disabled={connection.isPending}
+            >
+              <Plug size={14} />
+              {connection.isPending ? "Checking…" : "Test connection"}
+            </Button>
+            {connection.data && (
+              <p className="success-message">
+                <Check size={14} />
+                {connection.data.message}
+              </p>
+            )}
+            <ErrorState error={connection.error} />
+          </section>
+        )}
         <section className="panel settings-card">
           <div className="settings-title">
             <span className="settings-icon violet">
@@ -142,7 +152,11 @@ export function Settings() {
             </span>
             <div>
               <h2>Connect a project</h2>
-              <p>Projects accessible with your server-side GitLab token.</p>
+              <p>
+                {settings?.auth_mode === "gitlab"
+                  ? "Projects accessible with your connected GitLab account."
+                  : "Projects accessible with your server-side GitLab token."}
+              </p>
             </div>
           </div>
           <form
@@ -222,44 +236,46 @@ export function Settings() {
           </div>
         </section>
         <div className="settings-stack">
-          <section className="panel settings-card">
-            <div className="settings-title">
-              <KeyRound size={18} />
-              <div>
-                <h2>Local API access</h2>
-                <p>Optional APP_API_KEY, not your GitLab token.</p>
+          {settings?.auth_mode !== "gitlab" && (
+            <section className="panel settings-card">
+              <div className="settings-title">
+                <KeyRound size={18} />
+                <div>
+                  <h2>Local API access</h2>
+                  <p>Optional APP_API_KEY, not your GitLab token.</p>
+                </div>
               </div>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                sessionStorage.setItem("doctor-api-key", key);
-                client.resetQueries();
-                setSaved(true);
-              }}
-            >
-              <label htmlFor="api-key">Application API key</label>
-              <input
-                id="api-key"
-                type="password"
-                value={key}
-                onChange={(e) => {
-                  setKey(e.target.value);
-                  setSaved(false);
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sessionStorage.setItem("doctor-api-key", key);
+                  client.resetQueries();
+                  setSaved(true);
                 }}
-                autoComplete="off"
-                placeholder="Enter only if server requires it"
-              />
-              <Button size="sm" variant="outline" type="submit">
-                Save for this tab
-              </Button>
-              {saved && <span className="success-message">Saved</span>}
-            </form>
-            <p className="panel-note">
-              Stored in sessionStorage for this tab. Never enter GitLab or LLM
-              credentials here.
-            </p>
-          </section>
+              >
+                <label htmlFor="api-key">Application API key</label>
+                <input
+                  id="api-key"
+                  type="password"
+                  value={key}
+                  onChange={(e) => {
+                    setKey(e.target.value);
+                    setSaved(false);
+                  }}
+                  autoComplete="off"
+                  placeholder="Enter only if server requires it"
+                />
+                <Button size="sm" variant="outline" type="submit">
+                  Save for this tab
+                </Button>
+                {saved && <span className="success-message">Saved</span>}
+              </form>
+              <p className="panel-note">
+                Stored in sessionStorage for this tab. Never enter GitLab or LLM
+                credentials here.
+              </p>
+            </section>
+          )}
           <section className="panel settings-card retention-card">
             <Database size={18} />
             <h2>Small data footprint.</h2>

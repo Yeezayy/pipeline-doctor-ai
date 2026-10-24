@@ -7,6 +7,15 @@ export interface Settings {
   retention_days: number;
   log_max_chars: number;
   auth_enabled: boolean;
+  auth_mode: "local" | "gitlab";
+  oauth_configured: boolean;
+  oauth_callback_url: string;
+}
+export interface AuthSession {
+  mode: "local" | "gitlab";
+  authenticated: boolean;
+  user: { username: string; name: string } | null;
+  csrf_token: string | null;
 }
 export interface Project {
   id: string;

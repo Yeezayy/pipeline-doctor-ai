@@ -1,5 +1,6 @@
 import type {
   Analysis,
+  AuthSession,
   AvailableProject,
   Job,
   Pipeline,
@@ -7,17 +8,26 @@ import type {
   Settings,
 } from "../types";
 
+let csrfToken: string | null = null;
+let oauthSession = false;
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const key = sessionStorage.getItem("doctor-api-key");
   const response = await fetch("/api" + path, {
     ...init,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       ...(key ? { Authorization: `Bearer ${key}` } : {}),
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...init?.headers,
     },
   });
   if (!response.ok) {
+    if (response.status === 401 && oauthSession) {
+      csrfToken = null;
+      window.dispatchEvent(new Event("doctor:session-expired"));
+    }
     const data = await response.json().catch(() => ({}));
     throw new Error(
       typeof data.detail === "string"
@@ -31,6 +41,14 @@ const post = <T>(path: string, data: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(data) });
 
 export const api = {
+  me: async () => {
+    const session = await request<AuthSession>("/auth/me");
+    csrfToken = session.csrf_token;
+    oauthSession = session.mode === "gitlab";
+    return session;
+  },
+  login: () => post<{ authorization_url: string }>("/auth/gitlab/start", {}),
+  logout: () => post<void>("/auth/logout", {}),
   settings: () => request<Settings>("/settings"),
   projects: () => request<Project[]>("/projects"),
   available: (search: string, page = 1) =>
