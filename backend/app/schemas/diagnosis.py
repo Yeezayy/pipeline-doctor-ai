@@ -15,7 +15,7 @@ class PipelineDiagnosis(BaseModel):
     hypotheses: list[str] = Field(max_length=10)
     suggested_fixes: list[str] = Field(min_length=1, max_length=12)
     explanation: str = Field(min_length=1, max_length=6000)
-    fixes_tested: Literal[False] = False
+    fixes_tested: Literal[False]
 
 
 class AnalyzeRequest(BaseModel):

@@ -48,4 +48,8 @@ async def test_real_langchain_chain_over_mocked_openai_http():
         )
     assert result.summary == "Dockerfile not found"
     assert requests[0]["response_format"]["type"] == "json_schema"
+    schema = requests[0]["response_format"]["json_schema"]["schema"]
+    assert set(schema["required"]) == set(schema["properties"])
+    assert schema["additionalProperties"] is False
+    assert "default" not in schema["properties"]["fixes_tested"]
     assert "never-transmit" not in json.dumps(requests[0])
