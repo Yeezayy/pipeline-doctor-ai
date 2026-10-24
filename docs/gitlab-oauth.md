@@ -11,11 +11,11 @@ To avoid configuration for every user, the **project maintainer** must first reg
 - Callback: `http://localhost:8080/api/auth/gitlab/callback`
 - Scopes: `read_user`, `read_api`, `read_repository`
 
-Copy only the application's **public Application ID** into `backend/app/core/gitlab-registration.json`, under `client_id`. This file contains no secret and can be distributed with releases. Its `instance_url` binds that registration to one GitLab instance. A different self-managed instance needs its own registration.
+The GitLab.com application is registered and its **public Application ID** is committed in `backend/app/core/gitlab-registration.json`. This file contains no secret and can be distributed with releases. Its `instance_url` binds that registration to one GitLab instance. A different self-managed instance needs its own registration.
 
-**The registration ID is currently empty: the maintainer must supply a real ID before personal login can work.** No code can invent a valid GitLab app registration. Do not ask ordinary users to create it.
+The application must be a **public client**: the **Confidential** checkbox must be **unchecked**. A confidential application rejects the no-secret PKCE exchange with `invalid_client`; edit the application (or recreate it) with Confidential off. The Application ID is public; the client secret is never needed, requested or distributed.
 
-Once the registered ID is distributed, users can start the local account edition without creating a `.env` or personal token (Docker Compose 2.24+):
+Users can start the local account edition without creating a `.env` or personal token (Docker Compose 2.24+):
 
 ```bash
 docker compose -f compose.yaml -f compose.local.yaml up --build -d
@@ -23,7 +23,9 @@ docker compose -f compose.yaml -f compose.local.yaml up --build -d
 
 They open **http://localhost:8080**, click **Continue with GitLab**, and authorize on GitLab. The local backend exchanges the code using S256 PKCE and **no client secret**, including during refresh. The encryption key is generated privately on first start and reused from the `doctor-local-state` volume. Do not delete that volume if you want to retain readable encrypted credentials. Existing explicit `TOKEN_ENCRYPTION_KEY` values still take precedence. `OAUTH_KEY_FILE` selects the private file for non-Docker loopback deployments.
 
-The default `docker compose up` remains a local simulated demo, not a silent real connection. The local account edition fails clearly while the maintainer registration is missing. Keep the fixed callback port/hostname or register the exact alternative callback. `localhost` and `127.0.0.1` are not interchangeable cookie origins.
+The default `docker compose up` remains a local simulated demo, not a silent real connection. The local account edition requires the registration above and a **public** GitLab application. Keep the fixed callback port/hostname or register the exact alternative callback. `localhost` and `127.0.0.1` are not interchangeable cookie origins.
+
+**Verification status:** the authorization start is verified against GitLab.com (public client ID, S256 PKCE, exact callback, single-use state), and an invalid callback is rejected locally. A complete live sign-in still requires a person's own GitLab credentials and is not part of CI. If the token exchange returns `invalid_client`, the GitLab application is still confidential.
 
 Live AI calls still require a provider configured by the local operator. GitLab browsing does not require an LLM key. This does not move pipeline processing or credentials to GitHub Pages.
 

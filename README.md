@@ -16,7 +16,7 @@ An open-source investigation workbench that turns failed GitLab jobs into eviden
 
 [Quick start](#quick-start) · [Live integration](#connect-a-real-gitlab-project) · [Architecture](docs/architecture.md) · [Security](SECURITY.md) · [Roadmap](#roadmap)
 
-[Public demo](https://yeezayy.github.io/pipeline-doctor-ai/)
+[Public demo](https://pipeline-doctor.jordybarrere.dev/)
 
 </div>
 
@@ -33,7 +33,7 @@ This is a **functional, local-development MVP**, not an autonomous repair agent 
 ## What works today
 
 - **GitLab connection:** discover accessible member projects, connect a project, browse paginated pipelines, inspect details and jobs, fetch traces and the root `.gitlab-ci.yml` at the pipeline's immutable commit.
-- **Personal accounts:** GitLab OAuth + PKCE, encrypted server-side tokens, HttpOnly sessions, CSRF protection and per-user ownership. Operator registration is required: [OAuth guide](docs/gitlab-oauth.md).
+- **Personal accounts:** GitLab OAuth + PKCE, encrypted server-side tokens, HttpOnly sessions, CSRF protection and per-user ownership. The GitLab.com public client is registered; self-managed instances need their own: [OAuth guide](docs/gitlab-oauth.md).
 - **Public landing:** a SaaS-style presentation, actual demo captures and entry points to the workbench or account login. The dashboard lives at `/dashboard`.
 - **Interactive 3D:** a Three.js pipeline illustration built with React Three Fiber and Drei. Select stages, orbit and pause motion. It is illustrative, not live GitLab data. The renderer is lazy-loaded, motion stops off-screen/in background tabs, reduced motion is respected, and an accessible fallback works without WebGL.
 - **Structured AI diagnosis:** probable root cause, severity, confidence estimate, exact evidence excerpts, hypotheses, explanation and recommended fixes, validated with Pydantic through LangChain.
@@ -111,7 +111,7 @@ Demo and live projects/analyses are isolated by source. Switching modes never si
 
 ## Connect a real GitLab project
 
-**The intended user-friendly local flow is public OAuth + PKCE:** users run the app locally and authorize their own GitLab account, with no personal token or client secret to paste. The maintainer must first register and distribute the public Application ID; it is currently unset. See [the exact maintainer and user steps](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The static website is never involved in real GitLab authentication.
+**The intended user-friendly local flow is public OAuth + PKCE:** users run the app locally and authorize their own GitLab account, with no personal token or client secret to paste. The GitLab.com public Application ID is registered and shipped in `backend/app/core/gitlab-registration.json`; the application must be a public client (**Confidential unchecked**). Self-managed instances need their own registration. See [the exact maintainer and user steps](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The static website is never involved in real GitLab authentication.
 
 For an operator deliberately choosing a confidential OAuth client, the alternative [server setup](docs/gitlab-oauth.md#alternative-confidential-server-application) still exists. It is not needed by public demo visitors. The instructions below describe the separate **local-only shared-token mode** (`AUTH_MODE=local`).
 

@@ -2,7 +2,7 @@
 
 ## Supported use
 
-The GitHub Pages build is a backend-free presentation with only simulated fixtures and tab-memory examples. It has no real GitLab login, provider calls, token fields or server persistence. Real account access belongs to the local installation. The optional public-client PKCE mode uses a maintainer-registered public application ID, no client secret, and automatically generated private local encryption state. The maintainer ID is currently unset; this is not an activated login service.
+The GitHub Pages build is a backend-free presentation with only simulated fixtures and tab-memory examples. It has no real GitLab login, provider calls, token fields or server persistence. Real account access belongs to the local installation. The optional public-client PKCE mode uses a maintainer-registered public application ID, no client secret, and automatically generated private local encryption state. The GitLab.com public application ID is registered and shipped; the application must remain a public client (Confidential unchecked). A complete live sign-in has not been exercised in CI and still requires a person's own GitLab credentials.
 
 Compose publishes only loopback ports. Anonymous demo and shared-token `AUTH_MODE=local` are single-operator modes and must not be exposed on untrusted networks. `APP_API_KEY` is not a multi-user security model. `AUTH_MODE=gitlab` adds OAuth sessions and per-user ownership, but still requires the [public-hosting prerequisites](docs/gitlab-oauth.md). Do not publish secrets in issues.
 

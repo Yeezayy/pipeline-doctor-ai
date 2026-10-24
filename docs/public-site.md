@@ -21,16 +21,16 @@ Routes use hashes (`#/dashboard`, `#/pipelines/…`) so GitHub Pages can serve d
 
 **https://yeezayy.github.io/pipeline-doctor-ai/**
 
-Check the repository's **Public website** workflow for the actual deployment status. A configured address is not proof that a deployment succeeded.
+The configured address is **https://pipeline-doctor.jordybarrere.dev/** (custom domain). The repository project URL `https://yeezayy.github.io/pipeline-doctor-ai/` redirects to it. Check the repository's **Public website** workflow for the actual deployment status. A configured address is not proof that a deployment succeeded.
 
 ### Custom domain
 
-After the first deployment, set the domain in **Repository Settings → Pages → Custom domain**, then configure DNS at the registrar. GitHub Pages supplies HTTPS; no VPS is needed. The workflow uses Pages' reported base path so a custom domain builds at `/`, while the default project site builds at `/pipeline-doctor-ai/`.
+The custom domain is set in **Repository Settings → Pages → Custom domain** to `pipeline-doctor.jordybarrere.dev`, with a registrar CNAME from `pipeline-doctor` to `yeezayy.github.io`. HTTPS is enforced. GitHub Pages supplies the certificate; no VPS is needed. The workflow uses Pages' reported base path so a custom domain builds at `/`, while the default project site builds at `/pipeline-doctor-ai/`.
 
-For a subdomain, add a CNAME pointing to `yeezayy.github.io` (not to the repository path). Apex domains require GitHub Pages' current A/AAAA or supported ALIAS/ANAME configuration; follow GitHub's published DNS instructions rather than copying unverified IPs. Verify domain ownership and keep HTTPS enabled. No domain has been configured by this code alone.
+For another subdomain, add the equivalent CNAME (not the repository path). Apex domains require GitHub Pages' current A/AAAA or supported ALIAS/ANAME configuration; follow GitHub's published DNS instructions rather than copying unverified IPs. Verify domain ownership and keep HTTPS enabled. The DNS record itself remains managed at the registrar, not by this repository.
 
 ## Local application: real GitLab access
 
 The normal frontend build still talks to FastAPI. Tokens, logs, credentials and stored analyses remain in that installation. The public website is not an authentication relay and never receives local tokens.
 
-For account login without asking every user to create tokens or secrets, see [local OAuth public + PKCE](gitlab-oauth.md#simplified-local-account-login-public-client--pkce). A maintainer must register that public GitLab application once. Its public ID can be distributed; no client secret is embedded. OAuth remains unavailable until this real ID is registered; the public demo does not require it.
+For account login without asking every user to create tokens or secrets, see [local OAuth public + PKCE](gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The GitLab.com public Application ID is registered and shipped in `backend/app/core/gitlab-registration.json`; it must be a public client (**Confidential unchecked**), and self-managed instances need their own registration. No client secret is embedded. The public demo does not require this registration.
