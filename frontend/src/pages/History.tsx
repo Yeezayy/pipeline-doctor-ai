@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Clock3, Sparkles, Trash2 } from "lucide-react";
 import { api } from "../services/api";
+import { PUBLIC_DEMO } from "../lib/deployment";
 import { date } from "../lib/utils";
 import { Button } from "../components/ui/button";
 import { Empty, ErrorState, Loading, PageHeading } from "../components/common";
@@ -18,7 +19,11 @@ export function History() {
       <PageHeading
         eyebrow="YOUR INVESTIGATIONS"
         title="A little wiser, every run."
-        description="Saved diagnoses and conversations. Sanitized evidence, never raw job logs."
+        description={
+          PUBLIC_DEMO
+            ? "Simulated diagnoses kept only in this tab’s memory. Reloading clears the demo history."
+            : "Saved diagnoses and conversations. Sanitized evidence, never raw job logs."
+        }
       />
       <ErrorState error={query.error || remove.error} />
       {query.isLoading ? (

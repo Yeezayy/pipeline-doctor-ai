@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!frontend/.env.public
 .venv/
 __pycache__/
 *.py[cod]
@@ -8,6 +9,7 @@ __pycache__/
 .ruff_cache/
 *.db
 *.db-*
+.local/
 node_modules/
 dist/
 *.tsbuildinfo

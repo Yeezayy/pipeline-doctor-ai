@@ -16,5 +16,12 @@
     "types": ["vite/client", "node"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "vite.config.ts", "playwright.config.ts", "e2e"]
+  "include": [
+    "src",
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.public.config.ts",
+    "e2e",
+    "e2e-public"
+  ]
 }

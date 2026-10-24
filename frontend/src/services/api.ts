@@ -7,6 +7,8 @@ import type {
   Project,
   Settings,
 } from "../types";
+import { PUBLIC_DEMO } from "../lib/deployment";
+import { demoApi } from "./publicDemo";
 
 let csrfToken: string | null = null;
 let oauthSession = false;
@@ -40,7 +42,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const post = <T>(path: string, data: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(data) });
 
-export const api = {
+const liveApi = {
   me: async () => {
     const session = await request<AuthSession>("/auth/me");
     csrfToken = session.csrf_token;
@@ -84,3 +86,5 @@ export const api = {
       "/connection",
     ),
 };
+
+export const api = PUBLIC_DEMO ? demoApi : liveApi;

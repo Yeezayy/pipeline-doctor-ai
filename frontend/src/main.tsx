@@ -1,6 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  HashRouter,
+  Link,
+  Route,
+  Routes,
+} from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkspaceProvider } from "./hooks/useWorkspace";
 import { Layout } from "./components/Layout";
@@ -11,6 +17,9 @@ import { History } from "./pages/History";
 import { Settings } from "./pages/Settings";
 import { Landing } from "./pages/Landing";
 import "./styles.css";
+import { PUBLIC_DEMO } from "./lib/deployment";
+
+const Router = PUBLIC_DEMO ? HashRouter : BrowserRouter;
 
 const client = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 15000 } },
@@ -19,7 +28,7 @@ const client = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={client}>
-      <BrowserRouter>
+      <Router>
         <WorkspaceProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -46,7 +55,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             </Route>
           </Routes>
         </WorkspaceProvider>
-      </BrowserRouter>
+      </Router>
     </QueryClientProvider>
   </React.StrictMode>,
 );

@@ -16,8 +16,54 @@ import { api } from "../services/api";
 import { Button } from "../components/ui/button";
 import { ErrorState, Loading, PageHeading } from "../components/common";
 import { GitLabAccount } from "../components/GitLabAccount";
+import { LOCAL_SETUP_URL, PUBLIC_DEMO } from "../lib/deployment";
 
 export function Settings() {
+  return PUBLIC_DEMO ? <PublicDemoSettings /> : <IntegrationSettings />;
+}
+
+function PublicDemoSettings() {
+  return (
+    <>
+      <PageHeading
+        eyebrow="PUBLIC PRESENTATION"
+        title="A demo here. Your pipelines at home."
+        description="This website runs entirely in your browser. It cannot connect to GitLab or call an AI provider."
+      />
+      <section className="panel settings-card">
+        <div className="settings-title">
+          <FlaskConical size={22} />
+          <div>
+            <h2>Simulated workspace</h2>
+            <p>
+              Six curated incidents, example diagnoses and fixed assistant
+              replies.
+            </p>
+          </div>
+        </div>
+        <div className="configuration-note">
+          <ShieldCheck size={18} />
+          <p>
+            No backend, account login or provider keys are used here. Example
+            analyses and conversations live only in this tab’s memory and
+            disappear when you reload. Do not enter credentials or private logs.
+          </p>
+        </div>
+        <Button asChild>
+          <a href={LOCAL_SETUP_URL} target="_blank" rel="noreferrer">
+            Run the real application locally
+          </a>
+        </Button>
+        <p className="panel-note">
+          Real GitLab access, tokens, logs and saved diagnoses belong to your
+          own local installation, not this presentation website.
+        </p>
+      </section>
+    </>
+  );
+}
+
+function IntegrationSettings() {
   const { settings, error, selectProject } = useWorkspace();
   const client = useQueryClient();
   const [key, setKey] = useState("");

@@ -15,6 +15,7 @@ import { NavLink, Outlet, Link } from "react-router-dom";
 import { useState } from "react";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { GitLabAccount } from "./GitLabAccount";
+import { PUBLIC_DEMO } from "../lib/deployment";
 
 const navigation = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
@@ -151,7 +152,8 @@ export function Layout() {
               responses are simulated.
             </span>
             <Link to="/settings">
-              Connect GitLab <ArrowUpRight size={13} />
+              {PUBLIC_DEMO ? "Local app setup" : "Connect GitLab"}{" "}
+              <ArrowUpRight size={13} />
             </Link>
           </div>
         )}

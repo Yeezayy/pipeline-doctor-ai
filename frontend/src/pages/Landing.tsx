@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   Activity,
   ArrowDown,
@@ -19,11 +19,17 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { PipelineShowcase } from "../components/PipelineShowcase";
+import { LOCAL_SETUP_URL, PUBLIC_DEMO } from "../lib/deployment";
 import "./Landing.css";
 
 const repository = "https://github.com/Yeezayy/pipeline-doctor-ai";
 
 export function Landing() {
+  const location = useLocation();
+  useEffect(() => {
+    if (location.hash)
+      document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  }, [location.hash]);
   const { settings, auth } = useWorkspace();
   const [menu, setMenu] = useState(false);
   const [preview, setPreview] = useState<"diagnosis" | "dashboard">(
@@ -40,9 +46,9 @@ export function Landing() {
   const destination = demo || auth?.authenticated ? "/dashboard" : "/settings";
   return (
     <div className="landing">
-      <a className="landing-skip" href="#landing-content">
+      <Link className="landing-skip" to="/#landing-content">
         Skip to content
-      </a>
+      </Link>
       <header className="landing-header">
         <Link
           to="/"
@@ -59,15 +65,15 @@ export function Landing() {
           aria-label="Main navigation"
           className={menu ? "landing-nav is-open" : "landing-nav"}
         >
-          <a href="#product" onClick={() => setMenu(false)}>
+          <Link to="/#product" onClick={() => setMenu(false)}>
             The product
-          </a>
-          <a href="#workflow" onClick={() => setMenu(false)}>
+          </Link>
+          <Link to="/#workflow" onClick={() => setMenu(false)}>
             How it works
-          </a>
-          <a href="#principles" onClick={() => setMenu(false)}>
+          </Link>
+          <Link to="/#principles" onClick={() => setMenu(false)}>
             Our approach
-          </a>
+          </Link>
         </nav>
         <div className="landing-header-actions">
           <a
@@ -127,10 +133,22 @@ export function Landing() {
                   {primary}
                   <ArrowUpRight size={17} />
                 </Link>
-                <Link className="landing-secondary" to="/settings">
-                  {demo ? "Connect GitLab" : "Integration settings"}
-                  <ArrowRight size={15} />
-                </Link>
+                {PUBLIC_DEMO ? (
+                  <a
+                    className="landing-secondary"
+                    href={LOCAL_SETUP_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Run locally
+                    <ArrowUpRight size={15} />
+                  </a>
+                ) : (
+                  <Link className="landing-secondary" to="/settings">
+                    {demo ? "Connect GitLab" : "Integration settings"}
+                    <ArrowRight size={15} />
+                  </Link>
+                )}
               </div>
               <span className="landing-smallprint">
                 {demo
@@ -143,9 +161,9 @@ export function Landing() {
             <span>
               <GitBranch size={14} /> AI-Powered GitLab CI/CD Troubleshooting
             </span>
-            <a href="#product">
+            <Link to="/#product">
               MEET YOUR SECOND PAIR OF EYES <ArrowDown size={14} />
-            </a>
+            </Link>
           </div>
         </section>
 
@@ -192,7 +210,7 @@ export function Landing() {
           <div className="landing-preview">
             <img
               key={preview}
-              src={`/product/${preview}.png`}
+              src={`${import.meta.env.BASE_URL}product/${preview}.png`}
               alt={
                 preview === "diagnosis"
                   ? "Actual demo interface showing a missing Dockerfile diagnosis, exact evidence, untested recommendations and simulated chat"
@@ -396,9 +414,11 @@ export function Landing() {
             <ArrowUpRight size={19} />
           </Link>
           <p>
-            {demo
-              ? "Explore the simulated workbench. Connect a real instance when you’re ready."
-              : "Connect your account on this instance, or run your own deployment."}
+            {PUBLIC_DEMO
+              ? "This website is a simulated demo. Real projects and credentials stay in your local installation."
+              : demo
+                ? "Explore the simulated workbench. Connect a real instance when you’re ready."
+                : "Connect your account on this instance, or run your own deployment."}
           </p>
         </section>
       </div>

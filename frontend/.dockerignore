@@ -4,4 +4,5 @@ test-results
 playwright-report
 .env
 e2e
+e2e-public
 *.tsbuildinfo
