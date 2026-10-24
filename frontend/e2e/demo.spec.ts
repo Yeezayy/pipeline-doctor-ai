@@ -4,6 +4,18 @@ test("demo: pipeline → sanitized trace → diagnosis → chat → history", as
   page,
 }) => {
   const errors: string[] = [];
+  // Reproduce a fresh workspace cache even if the developer has saved demo analyses.
+  await page.route(
+    "**/api/analyses",
+    async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ json: [] });
+      } else {
+        await route.continue();
+      }
+    },
+    { times: 1 },
+  );
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await expect(

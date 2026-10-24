@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -15,7 +15,7 @@ class Project(Base):
     __tablename__ = "projects"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
-    gitlab_id: Mapped[int]
+    gitlab_id: Mapped[int] = mapped_column(BigInteger)
     name: Mapped[str] = mapped_column(String(500))
     web_url: Mapped[str] = mapped_column(String(2000))
     source: Mapped[str] = mapped_column(String(10))
@@ -26,8 +26,8 @@ class Analysis(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"))
-    pipeline_id: Mapped[int]
-    job_id: Mapped[int]
+    pipeline_id: Mapped[int] = mapped_column(BigInteger)
+    job_id: Mapped[int] = mapped_column(BigInteger)
     job_name: Mapped[str] = mapped_column(String(500))
     source: Mapped[str] = mapped_column(String(10), index=True)
     diagnosis: Mapped[dict[str, Any]] = mapped_column(JSON)

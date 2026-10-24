@@ -109,7 +109,7 @@ async def pipeline_detail(project_id: str, pipeline_id: int, db: Session = Depen
 @router.get("/projects/{project_id}/pipelines/{pipeline_id}/jobs/{job_id}/trace")
 async def trace(project_id: str, pipeline_id: int, job_id: int, db: Session = Depends(get_db)):
     project = pipelines.connected_project(db, project_id)
-    _, _, logs, _ = await pipelines.job_context(project, pipeline_id, job_id)
+    _, _, logs, _ = await pipelines.job_context(project, pipeline_id, job_id, include_ci=False)
     limit = get_settings().log_max_chars
     safe = redact(logs)
     return {

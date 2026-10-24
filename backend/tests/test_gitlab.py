@@ -143,3 +143,15 @@ async def test_trace_size_cap():
         assert caught.value.status == 413
     finally:
         await client.close()
+
+
+async def test_ci_file_size_cap():
+    client = GitLabClient(
+        "https://gitlab.example",
+        "test-only",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, content=b"x" * 500_001)),
+    )
+    try:
+        assert await client.ci_file(1, "immutable-sha") is None
+    finally:
+        await client.close()

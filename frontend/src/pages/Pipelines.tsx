@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -124,6 +124,7 @@ export function PipelineDetail() {
   const { projectId = "", pipelineId = "" } = useParams();
   const id = Number(pipelineId);
   const navigate = useNavigate();
+  const client = useQueryClient();
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
   const [context, setContext] = useState("");
   const query = useQuery({
@@ -141,7 +142,11 @@ export function PipelineDetail() {
   });
   const analysis = useMutation({
     mutationFn: () => api.analyze(projectId, id, job!.id, context),
-    onSuccess: (a) => navigate(`/diagnosis/${a.id}`),
+    onSuccess: (a) => {
+      client.invalidateQueries({ queryKey: ["analyses"] });
+      client.setQueryData(["analysis", a.id], a);
+      navigate(`/diagnosis/${a.id}`);
+    },
   });
   return (
     <>

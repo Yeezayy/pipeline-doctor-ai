@@ -124,15 +124,20 @@ class GitLabClient:
 
     async def ci_file(self, project_id: int, ref: str) -> str | None:
         try:
-            response = await self.client.get(
-                f"projects/{project_id}/repository/files/.gitlab-ci.yml/raw", params={"ref": ref}
-            )
-            if response.status_code in (403, 404):
-                return None
-            self.check(response)
-            if len(response.content) > 500_000:
-                return None
-            return response.text
+            async with self.client.stream(
+                "GET",
+                f"projects/{project_id}/repository/files/.gitlab-ci.yml/raw",
+                params={"ref": ref},
+            ) as response:
+                if response.status_code in (403, 404):
+                    return None
+                self.check(response)
+                chunks = bytearray()
+                async for chunk in response.aiter_bytes():
+                    if len(chunks) + len(chunk) > 500_000:
+                        return None
+                    chunks.extend(chunk)
+                return chunks.decode("utf-8", errors="replace")
         except httpx.HTTPError as exc:
             raise GitLabError(502, "GitLab CI configuration request failed") from exc
 

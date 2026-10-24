@@ -81,7 +81,7 @@ async def pipeline_and_jobs(project: Project, pipeline_id: int):
     return pipeline_out(pipeline), [job_out(job) for job in jobs]
 
 
-async def job_context(project: Project, pipeline_id: int, job_id: int):
+async def job_context(project: Project, pipeline_id: int, job_id: int, *, include_ci: bool = True):
     pipeline, jobs = await pipeline_and_jobs(project, pipeline_id)
     job = next((job for job in jobs if job["id"] == job_id), None)
     if not job:
@@ -96,5 +96,5 @@ async def job_context(project: Project, pipeline_id: int, job_id: int):
     async with gitlab_client() as client:
         logs = await client.trace(project.gitlab_id, job_id)
         # Use immutable commit SHA, not a branch that could have moved.
-        ci = await client.ci_file(project.gitlab_id, pipeline["sha"])
+        ci = await client.ci_file(project.gitlab_id, pipeline["sha"]) if include_ci else None
     return pipeline, job, logs, ci
