@@ -155,3 +155,21 @@ async def test_ci_file_size_cap():
         assert await client.ci_file(1, "immutable-sha") is None
     finally:
         await client.close()
+
+
+async def test_oauth_uses_bearer_header_not_private_token():
+    def handler(request):
+        assert request.headers["authorization"] == "Bearer fixture-oauth"
+        assert "private-token" not in request.headers
+        return httpx.Response(200, json=[])
+
+    client = GitLabClient(
+        "https://gitlab.example",
+        "fixture-oauth",
+        oauth=True,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        assert await client.projects() == []
+    finally:
+        await client.close()

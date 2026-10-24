@@ -1,6 +1,7 @@
 import re
 
 from app.core.config import get_settings
+from app.core.identity import identity
 
 REDACTED = "[REDACTED]"
 PATTERNS = [
@@ -32,7 +33,16 @@ ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 def redact(text: str) -> str:
     settings = get_settings()
     text = ANSI.sub("", text)
-    for secret in (settings.gitlab_token, settings.llm_api_key, settings.app_api_key):
+    principal = identity.get()
+    for secret in (
+        settings.gitlab_token,
+        settings.llm_api_key,
+        settings.app_api_key,
+        settings.gitlab_client_secret,
+        settings.token_encryption_key,
+        principal.access_token,
+        principal.refresh_token,
+    ):
         if secret:
             text = text.replace(secret, REDACTED)
     for pattern, replacement in PATTERNS:

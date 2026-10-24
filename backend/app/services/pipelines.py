@@ -1,8 +1,11 @@
+from uuid import NAMESPACE_URL, uuid5
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.identity import owner_id
 from app.core.security import redact
 from app.integrations.gitlab import gitlab_client
 from app.models.entities import Project
@@ -25,7 +28,7 @@ def ensure_demo(db: Session):
 
 def connected_project(db: Session, project_id: str) -> Project:
     project = db.get(Project, project_id)
-    if not project or project.source != source():
+    if not project or project.source != source() or project.owner_id != owner_id():
         raise HTTPException(404, "Connected project not found in the current mode")
     return project
 
@@ -34,11 +37,14 @@ async def connect(db: Session, gitlab_id: str | int):
     async with gitlab_client() as client:
         data = await client.project(gitlab_id)
     project = Project(
-        id=f"live-{data['id']}",
+        id=str(uuid5(NAMESPACE_URL, f"{owner_id()}:{data['id']}"))
+        if owner_id()
+        else f"live-{data['id']}",
         gitlab_id=data["id"],
         name=redact(data["path_with_namespace"]),
         web_url=data["web_url"],
         source="live",
+        owner_id=owner_id(),
     )
     project = db.merge(project)
     db.commit()
@@ -48,9 +54,11 @@ async def connect(db: Session, gitlab_id: str | int):
 async def connected(db: Session):
     if source() == "demo":
         ensure_demo(db)
-    result = db.scalars(select(Project).where(Project.source == source())).all()
+    result = db.scalars(
+        select(Project).where(Project.source == source(), Project.owner_id == owner_id())
+    ).all()
     configured = get_settings().gitlab_project_id
-    if not result and configured and source() == "live":
+    if not result and configured and source() == "live" and owner_id() is None:
         result = [await connect(db, configured)]
     return [project_out(project) for project in result]
 

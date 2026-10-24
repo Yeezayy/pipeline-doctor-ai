@@ -4,16 +4,18 @@ import time
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.ai.diagnostician import AIUnavailable
-from app.api.routes import authorized, router
+from app.api.auth import router as auth_router
+from app.api.routes import router, settings_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal, engine, prune
 from app.integrations.gitlab import GitLabError
+from app.services.oauth import authenticated_context
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("doctor")
@@ -28,18 +30,16 @@ async def lifespan(app: FastAPI):
     engine.dispose()
 
 
-def protect(authorization: str | None = Header(None)):
-    authorized(authorization)
-
-
 app = FastAPI(title="Pipeline Doctor AI", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
-app.include_router(router, prefix="/api", dependencies=[Depends(protect)])
+app.include_router(settings_router, prefix="/api")
+app.include_router(auth_router)
+app.include_router(router, prefix="/api", dependencies=[Depends(authenticated_context)])
 
 
 @app.middleware("http")
@@ -50,6 +50,7 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
     logger.info(
         json.dumps(
             {

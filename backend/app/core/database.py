@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import create_engine, delete, event
@@ -32,8 +33,10 @@ def get_db():
 
 
 def prune(session: Session) -> None:
-    from app.models.entities import Analysis
+    from app.models.entities import Analysis, LoginSession, OAuthState
 
     cutoff = datetime.now(UTC) - timedelta(days=get_settings().retention_days)
     session.execute(delete(Analysis).where(Analysis.created_at < cutoff))
+    session.execute(delete(LoginSession).where(LoginSession.expires_at <= int(time.time())))
+    session.execute(delete(OAuthState).where(OAuthState.expires_at <= int(time.time())))
     session.commit()

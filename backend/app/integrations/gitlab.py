@@ -4,6 +4,8 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
+from app.core.identity import identity
+
 
 class GitLabError(Exception):
     def __init__(self, status: int, message: str):
@@ -14,13 +16,13 @@ class GitLabError(Exception):
 class GitLabClient:
     """One client per request; no credentials in URLs or exception messages."""
 
-    def __init__(self, url: str, token: str, transport=None):
+    def __init__(self, url: str, token: str, transport=None, *, oauth: bool = False):
         parsed = urlparse(url)
         if parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise GitLabError(503, "GITLAB_URL must not contain credentials, query or fragment")
         self.client = httpx.AsyncClient(
             base_url=url.rstrip("/") + "/api/v4/",
-            headers={"PRIVATE-TOKEN": token},
+            headers={"Authorization": f"Bearer {token}"} if oauth else {"PRIVATE-TOKEN": token},
             timeout=httpx.Timeout(20, connect=5),
             transport=transport,
             follow_redirects=False,
@@ -147,9 +149,15 @@ async def gitlab_client() -> AsyncIterator[GitLabClient]:
     from app.core.config import get_settings
 
     settings = get_settings()
-    if not settings.gitlab_token:
+    principal = identity.get()
+    token = principal.access_token if settings.auth_mode == "gitlab" else settings.gitlab_token
+    if not token:
         raise GitLabError(503, "Set GITLAB_TOKEN on the backend to connect GitLab")
-    client = GitLabClient(str(settings.gitlab_url), settings.gitlab_token)
+    client = (
+        GitLabClient(str(settings.gitlab_url), token, oauth=True)
+        if settings.auth_mode == "gitlab"
+        else GitLabClient(str(settings.gitlab_url), token)
+    )
     try:
         yield client
     finally:

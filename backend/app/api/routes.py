@@ -2,7 +2,7 @@ import asyncio
 import secrets
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.ai.diagnostician import Diagnostician
 from app.core.config import get_settings
 from app.core.database import get_db, prune
+from app.core.identity import owner_id
 from app.core.security import excerpt, redact
 from app.integrations.gitlab import gitlab_client
 from app.models.entities import Analysis, Message
@@ -17,16 +18,24 @@ from app.schemas.diagnosis import AnalysisOut, AnalyzeRequest, ChatRequest, Pipe
 from app.services import demo, pipelines
 
 router = APIRouter()
+settings_router = APIRouter()
 ai_slots = asyncio.Semaphore(2)
 
 
-@router.get("/settings")
-def settings():
+@settings_router.get("/settings")
+def settings(request: Request):
     config = get_settings()
+    if config.auth_mode == "local":
+        authorized(request.headers.get("authorization"))
     return {
         "demo_mode": config.demo_mode,
         "gitlab_url": str(config.gitlab_url),
-        "gitlab_configured": bool(config.gitlab_token),
+        "gitlab_configured": bool(config.gitlab_client_id)
+        if config.auth_mode == "gitlab"
+        else bool(config.gitlab_token),
+        "auth_mode": config.auth_mode,
+        "oauth_configured": config.auth_mode == "gitlab",
+        "oauth_callback_url": str(config.public_app_url).rstrip("/") + "/api/auth/gitlab/callback",
         "llm_configured": bool(config.llm_api_key),
         "llm_model": config.llm_model,
         "retention_days": config.retention_days,
@@ -123,7 +132,7 @@ async def trace(project_id: str, pipeline_id: int, job_id: int, db: Session = De
 def get_analysis(db: Session, analysis_id: str):
     prune(db)
     analysis = db.get(Analysis, analysis_id)
-    if not analysis or analysis.source != pipelines.source():
+    if not analysis or analysis.source != pipelines.source() or analysis.owner_id != owner_id():
         raise HTTPException(404, "Analysis not found in the current mode")
     return analysis
 
@@ -159,6 +168,7 @@ async def analyze(body: AnalyzeRequest, db: Session = Depends(get_db)):
             job_id=body.job_id,
             job_name=job["name"],
             source=project.source,
+            owner_id=owner_id(),
             diagnosis=result.model_dump(),
             pipeline=pipeline,
         )
@@ -175,7 +185,7 @@ def history(db: Session = Depends(get_db), limit: int = Query(30, ge=1, le=100))
     prune(db)
     return db.scalars(
         select(Analysis)
-        .where(Analysis.source == pipelines.source())
+        .where(Analysis.source == pipelines.source(), Analysis.owner_id == owner_id())
         .order_by(Analysis.created_at.desc())
         .limit(limit)
     ).all()
