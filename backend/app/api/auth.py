@@ -89,6 +89,7 @@ async def logout(request: Request, response: Response, db: Session = Depends(get
         raise HTTPException(400, "No GitLab login session in local mode")
     oauth.assert_origin(request)
     row = oauth.session_for(request, db)
+    response.headers["X-GitLab-Revocation"] = "not-attempted"
     if row:
         if not secrets.compare_digest(
             request.headers.get("x-csrf-token", "").encode(), row.csrf_token.encode()
@@ -106,6 +107,7 @@ async def logout(request: Request, response: Response, db: Session = Depends(get
                     "token": oauth.decrypt(access_cipher),
                 },
             )
+            response.headers["X-GitLab-Revocation"] = "revoked"
         except HTTPException:
             response.headers["X-GitLab-Revocation"] = "pending-manual-revocation"
     response.delete_cookie(

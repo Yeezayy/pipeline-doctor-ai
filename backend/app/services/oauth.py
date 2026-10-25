@@ -20,7 +20,9 @@ from app.models.entities import LoginSession, OAuthState, User
 
 SESSION_COOKIE = "pd_session"
 STATE_COOKIE = "pd_oauth"
-SCOPES = "read_user read_api read_repository"
+# All resource access uses GET /api/v4, including /user and Repository Files.
+# No Git-over-HTTP access (read_repository) or additional profile scope is needed.
+SCOPES = "read_api"
 
 
 def digest(value: str) -> str:

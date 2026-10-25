@@ -73,7 +73,7 @@ def test_pkce_encrypted_session_and_no_token_disclosure(client, oauth_config):
     assert client.get("/api/settings").json()["auth_mode"] == "gitlab"
     params, callback = sign_in(client)
     assert params["code_challenge_method"] == ["S256"]
-    assert set(params["scope"][0].split()) == set(oauth.SCOPES.split())
+    assert params["scope"] == ["read_api"]
     token_call = oauth_config[0][1]
     verifier = token_call["code_verifier"]
     expected = (
@@ -170,6 +170,80 @@ def test_oauth_csrf_and_logout_even_when_provider_down(client, oauth_config, mon
     assert response.headers["X-GitLab-Revocation"] == "pending-manual-revocation"
     assert client.get("/api/auth/me").json()["authenticated"] is False
     assert client.get("/api/projects").status_code == 401
+
+
+def test_logout_confirms_upstream_revocation_and_invalidates_cookie(client, oauth_config):
+    sign_in(client)
+    cookie = client.cookies[oauth.SESSION_COOKIE]
+    csrf = client.get("/api/auth/me").json()["csrf_token"]
+    response = client.post("/api/auth/logout", headers={**HEADERS, "X-CSRF-Token": csrf})
+    assert response.status_code == 204
+    assert response.headers["X-GitLab-Revocation"] == "revoked"
+    assert oauth_config[-1][0] == "/oauth/revoke"
+    assert oauth_config[-1][1]["token"] == "fixture-access"
+    assert oauth.SESSION_COOKIE not in client.cookies
+    with SessionLocal() as db:
+        assert db.scalars(select(LoginSession)).all() == []
+    # A captured cookie must no longer work after local logout.
+    client.cookies.set(oauth.SESSION_COOKIE, cookie)
+    assert client.get("/api/projects").status_code == 401
+
+
+def test_logout_without_session_does_not_claim_gitlab_revocation(client, oauth_config):
+    response = client.post("/api/auth/logout", headers=HEADERS)
+    assert response.status_code == 204
+    assert response.headers["X-GitLab-Revocation"] == "not-attempted"
+    assert oauth_config == []
+
+
+@pytest.mark.parametrize("scope", ["", "read_user", "read_repository", "api"])
+async def test_token_exchange_requires_the_requested_read_api_scope(
+    oauth_config, monkeypatch, scope
+):
+    async def provider(*args, **kwargs):
+        return {
+            "access_token": "fixture-access",
+            "refresh_token": "fixture-refresh",
+            "expires_in": 7200,
+            "token_type": "Bearer",
+            "scope": scope,
+        }
+
+    monkeypatch.setattr(oauth, "provider_request", provider)
+    with pytest.raises(HTTPException) as denied:
+        await oauth.tokens({"grant_type": "authorization_code", "code": "fixture-code"})
+    assert denied.value.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("GET", "/api/projects/unconnected/pipelines", None),
+        ("GET", "/api/projects/unconnected/pipelines/1", None),
+        ("GET", "/api/projects/unconnected/pipelines/1/jobs/2/trace", None),
+        (
+            "POST",
+            "/api/analyses",
+            {"project_id": "unconnected", "pipeline_id": 1, "job_id": 2},
+        ),
+    ],
+)
+def test_unconnected_project_is_rejected_before_gitlab_access(
+    client, oauth_config, monkeypatch, method, path, body
+):
+    from unittest.mock import MagicMock
+
+    from app.api import routes
+    from app.services import pipelines
+
+    sign_in(client)
+    csrf = client.get("/api/auth/me").json()["csrf_token"]
+    boundary = MagicMock(side_effect=AssertionError("No GitLab request is allowed"))
+    monkeypatch.setattr(routes, "gitlab_client", boundary)
+    monkeypatch.setattr(pipelines, "gitlab_client", boundary)
+    response = client.request(method, path, headers={**HEADERS, "X-CSRF-Token": csrf}, json=body)
+    assert response.status_code == 404
+    boundary.assert_not_called()
 
 
 def test_refresh_rotation_and_expired_session(client, oauth_config):

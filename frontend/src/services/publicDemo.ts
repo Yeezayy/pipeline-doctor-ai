@@ -4,6 +4,7 @@ import type {
   AvailableProject,
   Diagnosis,
   Job,
+  LogoutResult,
   Pipeline,
   Project,
   Settings,
@@ -147,7 +148,7 @@ export const demoApi = {
     csrf_token: null,
   }),
   login: async (): Promise<{ authorization_url: string }> => unavailable(),
-  logout: async (): Promise<void> => unavailable(),
+  logout: async (): Promise<LogoutResult> => unavailable(),
   settings: async (): Promise<Settings> => ({
     demo_mode: true,
     gitlab_url: "https://gitlab.com",

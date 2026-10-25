@@ -17,6 +17,9 @@ export interface AuthSession {
   user: { username: string; name: string } | null;
   csrf_token: string | null;
 }
+export interface LogoutResult {
+  revocation: "confirmed" | "unconfirmed";
+}
 export interface Project {
   id: string;
   gitlab_id: number;

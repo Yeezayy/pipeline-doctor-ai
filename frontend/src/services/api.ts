@@ -3,6 +3,7 @@ import type {
   AuthSession,
   AvailableProject,
   Job,
+  LogoutResult,
   Pipeline,
   Project,
   Settings,
@@ -13,7 +14,10 @@ import { demoApi } from "./publicDemo";
 let csrfToken: string | null = null;
 let oauthSession = false;
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestResponse(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   const key = sessionStorage.getItem("doctor-api-key");
   const response = await fetch("/api" + path, {
     ...init,
@@ -37,6 +41,11 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
         : `Request failed (${response.status})`,
     );
   }
+  return response;
+}
+
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await requestResponse(path, init);
   return response.status === 204 ? (undefined as T) : response.json();
 }
 const post = <T>(path: string, data: unknown) =>
@@ -50,7 +59,19 @@ const liveApi = {
     return session;
   },
   login: () => post<{ authorization_url: string }>("/auth/gitlab/start", {}),
-  logout: () => post<void>("/auth/logout", {}),
+  logout: async (): Promise<LogoutResult> => {
+    const response = await requestResponse("/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    return {
+      // Missing/unknown headers (including older backends) must not claim revocation.
+      revocation:
+        response.headers.get("X-GitLab-Revocation") === "revoked"
+          ? "confirmed"
+          : "unconfirmed",
+    };
+  },
   settings: () => request<Settings>("/settings"),
   projects: () => request<Project[]>("/projects"),
   available: (search: string, page = 1) =>
