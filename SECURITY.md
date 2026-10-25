@@ -9,6 +9,8 @@ Compose publishes only loopback ports. Anonymous demo and shared-token `AUTH_MOD
 ## Data handling
 
 - OAuth tokens are Fernet-encrypted in PostgreSQL. Session/state identifiers are hashed; the browser receives only an opaque HttpOnly, SameSite=Lax cookie, Secure on HTTPS. State is single-use and browser-bound; PKCE uses S256. Mutations require an exact Origin match and session-bound CSRF token. A database lease coordinates refresh rotation. Local logout attempts upstream revocation but does not delete private saved history. See the OAuth guide for key loss, cleanup and account-deletion limitations.
+- OAuth requests only `read_api`: all integration calls use the HTTP API, not Git-over-HTTP. This scope is account-wide within the user's permissions, not restricted to connected projects. Resource routes enforce connected-project ownership, but cannot limit a stolen token's GitLab permissions. Older grants must be revoked in GitLab and reauthorized to reduce their scopes.
+- If upstream revocation is not confirmed at logout, the UI retains a manual-revocation warning across redirects/reloads in that tab, linking to GitLab's applications page. The local session is still invalidated. Only a non-sensitive boolean is stored; closing the tab discards the notice, not any upstream authorization.
 
 - LLM credentials, OAuth application secrets and the optional shared GitLab token are backend environment values. Per-session GitLab OAuth tokens are encrypted in the database, not environment variables. The UI shows configuration booleans and the signed-in username, never credentials. No GitLab token input exists in the browser.
 - HTTPX uses a private-token header, certificate verification and bounded timeouts; it does not follow redirects that could forward credentials. Administrator-configured service URLs cannot contain embedded credentials/query/fragment.
@@ -19,6 +21,8 @@ Compose publishes only loopback ports. Anonymous demo and shared-token `AUTH_MOD
 ## AI trust boundary
 
 Logs, files and user context are untrusted model data. A system instruction rejects embedded directives; evidence quotes are checked against the actual supplied excerpts. This is defense in depth, not a guarantee against prompt injection or hallucinations. The model has no shell, write, retry or MR tools. Recommendations are rendered as text, not raw HTML/Markdown executable content. Fixes cannot be marked tested. Never paste credentials into chat.
+
+Native JSON Schema output remains the default. The explicit `LLM_OUTPUT_MODE=prompt_json` compatibility mode sends the schema in the system prompt without `response_format` or tools. Plain replies must pass strict local JSON/Pydantic validation before saving; malformed/truncated replies, extra fields and invalid types fail closed. Both modes retain masking and evidence checks. There is no automatic repair, paid-model fallback or silent demo substitution. Successful schema validation is not proof that a diagnosis is factually correct.
 
 ## Abuse/cost boundary
 

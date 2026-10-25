@@ -28,6 +28,8 @@ The deployment chooses `DEMO_MODE` server-side. The demo has six curated inciden
 
 One LangChain `ChatOpenAI` call produces a Pydantic diagnosis. There is no agent with shell/repository tools. Logs are redacted, then reduced to a quarter-head/three-quarter-tail excerpt. The file/context budgets are separate and documented. Only verbatim evidence found in the supplied log/CI excerpt survives validation. This cannot establish that an explanation is correct; the output still labels hypotheses and untested recommendations.
 
+`LLM_OUTPUT_MODE=json_schema` uses native provider-enforced structured output by default. `prompt_json` is an explicit compatibility mode for gateways that reject `response_format` (for example Experiential's tested GLM profile): the JSON schema is placed in the trusted system message, and one ordinary chat completion is parsed strictly with Pydantic. Extra fields, wrong types, malformed JSON, Markdown fences and reported token-limit truncation are rejected. Both paths apply the same result redaction and exact-evidence filtering. There is no output-repair call, tool call, automatic downgrade or model fallback. Prompt-based formatting is less reliable than native schema enforcement; errors remain explicit, not fake diagnoses.
+
 Chat uses the persisted diagnosis and pipeline metadata plus the last 10 messages. It cannot recover omitted original logs or execute fixes. Demo chat is a plainly marked fixed template, not a fake LLM.
 
 ### PostgreSQL by default in Compose, SQLite for a fast local loop

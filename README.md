@@ -113,9 +113,11 @@ Demo and live projects/analyses are isolated by source. Switching modes never si
 
 **The intended user-friendly local flow is public OAuth + PKCE:** users run the app locally and authorize their own GitLab account, with no personal token or client secret to paste. The GitLab.com public Application ID is registered and shipped in `backend/app/core/gitlab-registration.json`; the application must be a public client (**Confidential unchecked**). Self-managed instances need their own registration. See [the exact maintainer and user steps](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The static website is never involved in real GitLab authentication.
 
+OAuth requests **`read_api` only**. This grants read access to API resources available to your account, not just projects selected in this app; pipeline/log/CI inspection is restricted by the app to projects you explicitly connect. Previous broader grants need [manual revocation and reauthorization](docs/gitlab-oauth.md#permission-scope-and-upgrading-an-existing-authorization) to narrow their scopes. If logout cannot confirm revocation, the UI keeps a warning in that tab with instructions to revoke access in GitLab.
+
 For an operator deliberately choosing a confidential OAuth client, the alternative [server setup](docs/gitlab-oauth.md#alternative-confidential-server-application) still exists. It is not needed by public demo visitors. The instructions below describe the separate **local-only shared-token mode** (`AUTH_MODE=local`).
 
-1. Create a **read-only** personal or project access token with `read_api` and appropriate project membership. Depending on your GitLab version/token type, repository file reads may additionally require `read_repository`. Do not grant write access.
+1. Create a **read-only** personal or project access token with `read_api` and appropriate project membership. This includes Repository Files API reads; no Git-over-HTTP scope or write access is needed.
 2. Edit the server environment, never frontend variables:
 
 ```dotenv
@@ -131,11 +133,21 @@ APP_API_KEY=
 
 Fill the empty values locally, **never commit them**. `GITLAB_PROJECT_ID` is optional: a numeric ID or `group/project` path auto-connects when no live project is connected. Otherwise use **Settings → Connect a project**. `GITLAB_URL` can point to your self-managed instance, including an installation subpath. TLS certificates must be trusted; verification is never disabled.
 
-3. Configure an OpenAI or OpenAI-compatible provider. The chosen model must support **structured JSON-schema output** through LangChain's `ChatOpenAI.with_structured_output`. Provider compatibility is not universal. The model name is configurable; the default is not a claim that it is the newest or best model.
+3. Configure an OpenAI or OpenAI-compatible provider. By default, diagnoses use **native JSON-schema output** through LangChain's `ChatOpenAI.with_structured_output`. If the gateway rejects `response_format`, explicitly set `LLM_OUTPUT_MODE=prompt_json`: the schema is included in the system prompt and the plain JSON reply is strictly validated locally. Invalid, truncated or extra-field output is rejected, never repaired or silently replaced with demo data. Provider compatibility is not universal. The model name is configurable; the default is not a claim that it is the newest or best model.
 4. Apply environment changes: `docker compose up -d --force-recreate backend`. In local development, restart the API with the new environment.
 5. Test GitLab connectivity in Settings, connect a project, select a failed job and request a diagnosis.
 
 GitLab browsing works without an LLM key; live analysis/chat returns an explicit configuration error until a provider is configured. Failed GitLab calls are never replaced with demo data. Root CI files missing or forbidden are treated as unavailable. HTTP errors, malformed lists, permissions, rate limits and timeouts have explicit error responses.
+
+For **Experiential GLM-5.3 Uncensored**, keep your Experiential key in the ignored `.env` and use:
+
+```dotenv
+LLM_BASE_URL=https://api.experientiallabs.ai/v1
+LLM_MODEL=glm-5.3-uncensored:free
+LLM_OUTPUT_MODE=prompt_json
+```
+
+The `:free` model ID is explicit: the unsuffixed ID is billed from credits, and the app never falls back to it. Free-tier availability and pricing are controlled by the provider. These settings affect only the local backend, not the public simulated demo. Local schema validation does not guarantee that a diagnosis is correct; secret masking and exact-evidence checks still apply.
 
 ### Configuration reference
 
@@ -146,6 +158,7 @@ All variables in `.env.example` are backend/Compose configuration; no provider s
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`: Compose database bootstrap values. Update `DATABASE_URL` consistently. Supplied values are development defaults, not production credentials.
 - `GITLAB_URL`, `GITLAB_TOKEN`, `GITLAB_PROJECT_ID`: GitLab instance, read-only token and optional initial project.
 - `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`: compatible provider configuration.
+- `LLM_OUTPUT_MODE`: `json_schema` (default, native provider schema) or `prompt_json` (schema in prompt, strict local JSON/Pydantic validation). No automatic downgrade or provider/model fallback.
 - `APP_API_KEY`: optional shared local API protection. When set, enter it in **Settings → Local API access**. Only this application key is kept in tab-scoped `sessionStorage`.
 - `AUTH_MODE`: `local` (default) or `gitlab` (per-user OAuth, requiring `DEMO_MODE=false`). OAuth never falls back to the shared token.
 - `PUBLIC_APP_URL`: exact browser-facing origin, determining the callback and allowed mutation Origin.

@@ -9,7 +9,7 @@ To avoid configuration for every user, the **project maintainer** must first reg
 - Name: Pipeline Doctor AI
 - **Confidential: disabled** (public OAuth client)
 - Callback: `http://localhost:8080/api/auth/gitlab/callback`
-- Scopes: `read_user`, `read_api`, `read_repository`
+- Scope: **`read_api` only**
 
 The GitLab.com application is registered and its **public Application ID** is committed in `backend/app/core/gitlab-registration.json`. This file contains no secret and can be distributed with releases. Its `instance_url` binds that registration to one GitLab instance. A different self-managed instance needs its own registration.
 
@@ -29,6 +29,18 @@ The default `docker compose up` remains a local simulated demo, not a silent rea
 
 Live AI calls still require a provider configured by the local operator. GitLab browsing does not require an LLM key. This does not move pipeline processing or credentials to GitHub Pages.
 
+### Permission scope and upgrading an existing authorization
+
+Pipeline Doctor uses only GitLab's HTTP API: profile lookup (`GET /api/v4/user`), project discovery, pipelines, jobs, traces and the Repository Files API. It requests **`read_api` only**; separate `read_user` and `read_repository` scopes are unnecessary. It does not clone repositories using Git-over-HTTP or request write access. See GitLab's [OAuth scope descriptions](https://docs.gitlab.com/integration/oauth_provider/#view-all-authorized-applications) and [Repository Files API scopes](https://docs.gitlab.com/api/repository_files/#available-scopes-for-personal-access-tokens).
+
+**This is not a per-project GitLab authorization.** `read_api` can read API resources accessible to the account, including projects not selected in Pipeline Doctor. The app discovers available projects, but pipeline, trace and CI-file routes require an explicitly connected project owned by the current user. This application-level check cannot constrain a stolen GitLab token.
+
+Earlier releases requested `read_user read_api read_repository`. Updating the code or refreshing an existing token does **not** automatically narrow an existing grant:
+
+1. The maintainer edits the registered GitLab application so only **`read_api`** is enabled (keep **Confidential unchecked** for the local public client). This setting is managed in GitLab, not by this repository.
+2. In GitLab **Edit profile → Access → Applications → Authorized applications**, revoke the previous **Pipeline Doctor AI** authorization. Revocation may affect other sessions of that application.
+3. Restart the local app with the updated build and connect again to authorize the reduced scope. No personal token or client secret is needed.
+
 ## Alternative: confidential server application
 
 The setup below remains available for an operator explicitly running a confidential server client. It is **not** a requirement for visitors of the public demo or for users of the pre-registered public local client. Leave `GITLAB_OAUTH_PUBLIC=false` for this alternative.
@@ -43,7 +55,7 @@ On the chosen GitLab instance, open **Preferences → Applications** (`https://g
 - Local Compose redirect: **`http://localhost:8080/api/auth/gitlab/callback`**
 - Hosted redirect: **`https://YOUR-OWN-DOMAIN/api/auth/gitlab/callback`**, replacing the domain with the actual deployment
 - Confidential: **enabled**
-- Scopes: **`read_user`**, **`read_api`**, **`read_repository`** only
+- Scope: **`read_api` only**
 
 Save the Application ID and secret directly into the backend environment. Never publish them, send them to chat or put them in `VITE_*` variables. Write access is not requested.
 
@@ -86,7 +98,7 @@ Compose applies migrations first. Without Docker, apply `uv run alembic upgrade 
 2. Click **Continue with GitLab** and review permissions on GitLab's site.
 3. Return to Settings, showing the connected username.
 4. Connect an accessible project and inspect its pipelines.
-5. **Disconnect GitLab** ends this browser session and attempts to revoke its grant.
+5. **Disconnect GitLab** ends this browser session and attempts to revoke its grant. If revocation is not confirmed, an alert survives the full-page redirect and reloads in the same tab, with a link to GitLab's applications page and manual-revocation instructions. Clear it only after checking/revoking access in GitLab; a later successful logout does not silently dismiss an earlier warning. Closing the tab clears this tab-local notice, not the GitLab authorization.
 
 Access/refresh tokens never reach JavaScript. The browser receives a random opaque HttpOnly, SameSite=Lax session cookie, Secure on HTTPS. Mutations also require an exact Origin match and a session-bound CSRF token from the API.
 
@@ -101,6 +113,7 @@ Logout keeps private saved history for the next login with the same GitLab ident
 - Authorization code + S256 PKCE; ten-minute, one-use state bound to a separate browser cookie. State/session identifiers are hashed in the database. Tokens and PKCE verifiers are Fernet-encrypted.
 - Expiring tokens refresh server-side. A short database lease prevents concurrent rotation across workers; another request receives a retryable 503. Invalid grants require reconnecting. A crash after upstream rotation but before saving can also require reconnecting: there is no cross-system exactly-once guarantee.
 - Sessions expire after `SESSION_DAYS`. Expired states/sessions are pruned at startup, analysis retention operations and new login starts. Revocation failure does not prevent local logout; revoke the grant manually in GitLab's **Authorized applications** if necessary. Logout affects this session, not all devices.
+- The logout API keeps its `204` response and reports `X-GitLab-Revocation: revoked`, `pending-manual-revocation` or `not-attempted`. Only `revoked` is treated as confirmed; absent/unknown headers also trigger the manual-check notice. The notice stores only a boolean in `sessionStorage`, not a token or account identity.
 - Keep `TOKEN_ENCRYPTION_KEY` stable and backed up separately. Losing/changing it makes existing credentials unreadable and requires reconnecting. There is no automatic key rotation or KMS integration.
 - Before public hosting: TLS, trusted proxy/host configuration, secret management, encrypted backups, reliable PostgreSQL, login/abuse controls, admission policy and **per-user LLM quotas**. The process-local semaphore is not a distributed quota. Never expose demo/shared-token mode with private data.
 - nginx logs method, path without query string and status, excluding OAuth callback codes/state. Keep uvicorn's `--no-access-log` or equivalent redaction in your hosting platform.
