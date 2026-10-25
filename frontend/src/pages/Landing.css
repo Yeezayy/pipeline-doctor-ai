@@ -272,14 +272,12 @@
   gap: 0;
   white-space: nowrap;
 }
-.landing-brand > span:first-child:not(.landing-brand-light) {
+.landing-brand-mark {
   display: grid;
   place-items: center;
-  width: 34px;
+  width: 54px;
   height: 34px;
-  background: var(--landing-green);
-  color: #18200f;
-  border-radius: 9px;
+  flex-shrink: 0;
   margin-right: 10px;
 }
 .landing-brand-light {
@@ -829,9 +827,9 @@
   font-size: 16px;
   color: #c5d3b9;
 }
-.landing-footer .landing-brand > svg {
-  margin-right: 8px;
-  color: var(--landing-green);
+.landing-footer .landing-brand-mark {
+  width: 44px;
+  height: 26px;
 }
 .landing-footer > span {
   color: #7c8d71;
@@ -918,8 +916,8 @@
   .landing-brand {
     font-size: 18px;
   }
-  .landing-brand > span:first-child:not(.landing-brand-light) {
-    width: 29px;
+  .landing-brand-mark {
+    width: 38px;
     height: 29px;
     margin-right: 7px;
   }

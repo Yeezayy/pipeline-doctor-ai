@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { PipelineShowcase } from "../components/PipelineShowcase";
+import { BrandLogo } from "../components/BrandLogo";
 import { LOCAL_SETUP_URL, PUBLIC_DEMO } from "../lib/deployment";
 import "./Landing.css";
 
@@ -55,8 +56,8 @@ export function Landing() {
           className="landing-brand"
           aria-label="Pipeline Doctor home"
         >
-          <span>
-            <Activity size={23} />
+          <span className="landing-brand-mark">
+            <BrandLogo />
           </span>
           pipeline<span className="landing-brand-light">doctor</span>
           <sup>AI</sup>
@@ -423,8 +424,14 @@ export function Landing() {
         </section>
       </div>
       <footer className="landing-footer landing-wrap">
-        <Link className="landing-brand" to="/">
-          <Activity size={19} />
+        <Link
+          className="landing-brand"
+          to="/"
+          aria-label="Pipeline Doctor home"
+        >
+          <span className="landing-brand-mark">
+            <BrandLogo />
+          </span>
           pipeline<span className="landing-brand-light">doctor</span>
         </Link>
         <span>AI-Powered GitLab CI/CD Troubleshooting</span>

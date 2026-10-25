@@ -1,6 +1,8 @@
 <div align="center">
 
-# Pipeline Doctor AI
+<img src="docs/screenshots/asset.png" alt="Pipeline Doctor AI — CI, understood." width="100%" />
+
+# <img src="frontend/public/brand/logo.png" alt="" width="64" /> Pipeline Doctor AI
 ### AI-Powered GitLab CI/CD Troubleshooting
 
 **Less firefighting. More shipping.**

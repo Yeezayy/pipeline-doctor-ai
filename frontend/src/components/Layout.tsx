@@ -1,5 +1,4 @@
 import {
-  Activity,
   ArrowUpRight,
   FlaskConical,
   GitBranch,
@@ -16,6 +15,7 @@ import { useState } from "react";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { GitLabAccount } from "./GitLabAccount";
 import { PUBLIC_DEMO } from "../lib/deployment";
+import { BrandLogo } from "./BrandLogo";
 
 const navigation = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
@@ -31,9 +31,13 @@ export function Layout() {
   return (
     <div className="app-shell">
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
-        <Link to="/dashboard" className="brand">
+        <Link
+          to="/dashboard"
+          className="brand"
+          aria-label="Pipeline Doctor workbench"
+        >
           <span className="brand-icon">
-            <Activity size={23} />
+            <BrandLogo />
           </span>
           <span>
             pipeline<span className="brand-light">doctor</span>
@@ -141,7 +145,13 @@ export function Layout() {
                 "Connecting…"
               )}
             </span>
-            <span className="user-avatar">PD</span>
+            <span
+              className="user-avatar"
+              role="img"
+              aria-label="Pipeline Doctor AI"
+            >
+              <BrandLogo />
+            </span>
           </div>
         </header>
         {settings?.demo_mode && (
@@ -165,7 +175,10 @@ export function Layout() {
           )}
         </main>
         <footer>
-          Built for the moments when CI says no.
+          <span className="footer-brand">
+            <BrandLogo />
+            Built for the moments when CI says no.
+          </span>
           <span>Evidence first. Guesswork last.</span>
         </footer>
       </div>
