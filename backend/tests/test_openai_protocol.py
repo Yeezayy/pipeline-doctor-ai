@@ -1,14 +1,18 @@
 import json
 
 import httpx
+import pytest
 from langchain_openai import ChatOpenAI
 
 from app.ai.diagnostician import Diagnostician
+from app.core.config import get_settings
 from app.services.demo import diagnosis
 
 
-async def test_real_langchain_chain_over_mocked_openai_http():
+@pytest.mark.parametrize("mode", ["json_schema", "prompt_json"])
+async def test_real_langchain_chain_over_mocked_openai_http(mode):
     """Exercise LangChain/OpenAI serialization and parsing, not just a mocked model."""
+    get_settings().llm_output_mode = mode
     data = diagnosis(1048)
     requests = []
 
@@ -47,9 +51,14 @@ async def test_real_langchain_chain_over_mocked_openai_http():
             context="",
         )
     assert result.summary == "Dockerfile not found"
-    assert requests[0]["response_format"]["type"] == "json_schema"
-    schema = requests[0]["response_format"]["json_schema"]["schema"]
-    assert set(schema["required"]) == set(schema["properties"])
-    assert schema["additionalProperties"] is False
-    assert "default" not in schema["properties"]["fixes_tested"]
+    assert len(requests) == 1
+    if mode == "json_schema":
+        assert requests[0]["response_format"]["type"] == "json_schema"
+        schema = requests[0]["response_format"]["json_schema"]["schema"]
+        assert set(schema["required"]) == set(schema["properties"])
+        assert schema["additionalProperties"] is False
+        assert "default" not in schema["properties"]["fixes_tested"]
+    else:
+        assert not {"response_format", "tools", "tool_choice"}.intersection(requests[0])
+        assert '"fixes_tested"' in requests[0]["messages"][0]["content"]
     assert "never-transmit" not in json.dumps(requests[0])

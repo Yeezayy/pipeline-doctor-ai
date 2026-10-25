@@ -12,6 +12,7 @@ os.environ["DEMO_MODE"] = "true"
 os.environ["APP_API_KEY"] = ""
 os.environ["GITLAB_TOKEN"] = ""
 os.environ["LLM_API_KEY"] = ""
+os.environ["LLM_OUTPUT_MODE"] = "json_schema"
 os.environ["AUTH_MODE"] = "local"
 
 from app.core.config import Settings, get_settings  # noqa: E402
@@ -28,6 +29,7 @@ def clean_database():
     settings.app_api_key = ""
     settings.gitlab_token = ""
     settings.llm_api_key = ""
+    settings.llm_output_mode = "json_schema"
     settings.auth_mode = "local"
     settings.gitlab_client_id = ""
     settings.gitlab_client_secret = ""

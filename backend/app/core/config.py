@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: HttpUrl = "https://api.openai.com/v1"
     llm_model: str = "gpt-4.1-mini"
+    llm_output_mode: Literal["json_schema", "prompt_json"] = "json_schema"
     app_api_key: str = ""
     auth_mode: Literal["local", "gitlab"] = "local"
     public_app_url: HttpUrl = "http://localhost:8080"

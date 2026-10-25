@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class PipelineDiagnosis(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     summary: str = Field(min_length=1, max_length=2000)
     root_cause: str = Field(min_length=1, max_length=4000)
     severity: Literal["low", "medium", "high", "critical"]

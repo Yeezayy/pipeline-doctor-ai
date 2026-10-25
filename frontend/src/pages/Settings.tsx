@@ -180,8 +180,10 @@ function IntegrationSettings() {
             <Sparkles size={16} />
             <p>
               Configure <code>LLM_API_KEY</code>, <code>LLM_MODEL</code> and
-              optionally <code>LLM_BASE_URL</code> on the server. The provider
-              must support structured JSON output.
+              optionally <code>LLM_BASE_URL</code> on the server. For providers
+              without native JSON Schema output, set{" "}
+              <code>LLM_OUTPUT_MODE=prompt_json</code>. Responses are still
+              validated locally before saving.
             </p>
           </div>
           {settings?.demo_mode && (

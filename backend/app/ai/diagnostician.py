@@ -54,11 +54,34 @@ class Diagnostician:
             "user_context": excerpt(context, 4000),
         }
         try:
-            structured = self.model.with_structured_output(PipelineDiagnosis, method="json_schema")
-            result = await structured.ainvoke(
-                [SystemMessage(content=SYSTEM), HumanMessage(content=json.dumps(payload))]
+            if settings.llm_output_mode == "prompt_json":
+                # Some OpenAI-compatible gateways reject response_format and tools.
+                # Request plain JSON, but never repair or trust invalid model output.
+                instructions = (
+                    SYSTEM + "\nReturn exactly one complete JSON object matching this JSON Schema. "
+                    "Include every required property. Use concise values. "
+                    "No Markdown fences, prose outside JSON, extra properties or tool calls.\n"
+                    + json.dumps(PipelineDiagnosis.model_json_schema())
+                )
+                response = await self.model.ainvoke(
+                    [SystemMessage(content=instructions), HumanMessage(content=json.dumps(payload))]
+                )
+                if (
+                    not isinstance(response.content, str)
+                    or response.response_metadata.get("finish_reason") == "length"
+                ):
+                    raise ValueError("Missing or truncated JSON diagnosis")
+                result = PipelineDiagnosis.model_validate_json(response.content, strict=True)
+            else:
+                structured = self.model.with_structured_output(
+                    PipelineDiagnosis, method="json_schema"
+                )
+                result = await structured.ainvoke(
+                    [SystemMessage(content=SYSTEM), HumanMessage(content=json.dumps(payload))]
+                )
+            diagnosis = PipelineDiagnosis.model_validate_json(
+                redact(result.model_dump_json()), strict=True
             )
-            diagnosis = PipelineDiagnosis.model_validate_json(redact(result.model_dump_json()))
             # Do not persist invented quotes, even when an LLM ignores the evidence instruction.
             diagnosis.evidence = [
                 line
