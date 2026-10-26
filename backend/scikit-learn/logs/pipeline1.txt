@@ -1,0 +1,16 @@
+image: python:3.12-alpine
+
+stages:
+  - test
+
+smoke_test:
+  stage: test
+  script:
+    - python --version
+    - echo "Smoke test OK"
+
+missing_dependency:
+  stage: test
+  script:
+    - echo "Échec volontaire pour tester Pipeline Doctor"
+    - python -c "import pipeline_doctor_demo_missing_dependency "
