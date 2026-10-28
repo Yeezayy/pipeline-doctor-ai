@@ -16,6 +16,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
 from app.core.identity import Identity, identity
 from app.core.security import redact
+from app.integrations.gitlab import GitLabClient
 from app.main import app
 from app.models.entities import Analysis, LoginSession, OAuthState, Project
 from app.services import oauth
@@ -94,6 +95,63 @@ def test_pkce_encrypted_session_and_no_token_disclosure(client, oauth_config):
         assert oauth.decrypt(saved.refresh_cipher) == "fixture-refresh"
         assert saved.id != client.cookies[oauth.SESSION_COOKIE]
         assert db.scalars(select(OAuthState)).all() == []
+
+
+def test_pipeline_url_requires_session_csrf_and_connects_for_current_user(
+    client, oauth_config, monkeypatch
+):
+    body = {"url": "https://gitlab.com/team/private/-/pipelines/123"}
+    assert client.post("/api/pipelines/resolve", json=body).status_code == 401
+    sign_in(client)
+    assert client.post("/api/pipelines/resolve", headers=HEADERS, json=body).status_code == 403
+    csrf = client.get("/api/auth/me").json()["csrf_token"]
+
+    def handler(request):
+        assert request.headers["authorization"] == "Bearer fixture-access"
+        assert "private-token" not in request.headers
+        if request.url.path.endswith("/jobs"):
+            return httpx.Response(200, json=[])
+        if request.url.path.endswith("/pipelines/123"):
+            return httpx.Response(
+                200, json={"id": 123, "status": "failed", "ref": "main", "sha": "abc"}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "id": 1,
+                "path_with_namespace": "team/private",
+                "web_url": "https://gitlab.com/team/private",
+            },
+        )
+
+    original = GitLabClient.__init__
+
+    def init(self, url, token, **kwargs):
+        original(self, url, token, transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(GitLabClient, "__init__", init)
+    with SessionLocal() as db:
+        db.add(
+            Project(
+                id="live-1",
+                gitlab_id=1,
+                name="local/shared",
+                web_url="https://gitlab.com/team/private",
+                source="live",
+            )
+        )
+        db.commit()
+    response = client.post(
+        "/api/pipelines/resolve", headers={**HEADERS, "X-CSRF-Token": csrf}, json=body
+    )
+    assert response.status_code == 200
+    connected = response.json()["project"]
+    assert connected["id"] != "live-1"
+    assert client.get("/api/projects").json() == [connected]
+    with SessionLocal() as db:
+        owner = db.scalars(select(LoginSession)).one().user_id
+        assert db.get(Project, connected["id"]).owner_id == owner
+        assert db.get(Project, "live-1").owner_id is None
 
 
 def test_callback_rejects_wrong_browser_state_expiry_and_replay(client, oauth_config):

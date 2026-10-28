@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 logs_dir = Path(__file__).parent / "logs"
@@ -8,7 +9,6 @@ documents = [
     for path in sorted(logs_dir.glob("*.txt"))
     if path.read_text(encoding="utf-8").strip()
 ]
-
 
 
 vectorizer = TfidfVectorizer(

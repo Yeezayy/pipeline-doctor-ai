@@ -6,6 +6,7 @@ import type {
   LogoutResult,
   Pipeline,
   Project,
+  ResolvedPipeline,
   Settings,
 } from "../types";
 import { PUBLIC_DEMO } from "../lib/deployment";
@@ -79,6 +80,8 @@ const liveApi = {
       `/projects/available?search=${encodeURIComponent(search)}&page=${page}`,
     ),
   connect: (gitlab_id: number) => post<Project>("/projects", { gitlab_id }),
+  resolvePipeline: (url: string) =>
+    post<ResolvedPipeline>("/pipelines/resolve", { url }),
   pipelines: (id: string, page = 1) =>
     request<Pipeline[]>(`/projects/${id}/pipelines?page=${page}`),
   detail: (id: string, pipeline: number) =>

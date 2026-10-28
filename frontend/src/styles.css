@@ -905,6 +905,38 @@ footer {
   padding: 15px 20px;
   gap: 12px;
 }
+.pipeline-url-panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.pipeline-url-panel h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.pipeline-url-panel p {
+  color: #8f9aaf;
+  font-size: 12px;
+  margin: 0 0 16px;
+}
+.pipeline-url-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pipeline-url-form .search-form {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.pipeline-url-form input {
+  min-width: 0;
+  width: 100%;
+}
+.pipeline-url-form svg {
+  flex-shrink: 0;
+}
+.pipeline-url-panel .error-box {
+  margin: 16px 0 0;
+}
 .pipeline-search {
   display: flex;
   align-items: center;

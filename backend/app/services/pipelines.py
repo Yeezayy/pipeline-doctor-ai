@@ -1,3 +1,5 @@
+import re
+from urllib.parse import unquote, urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import HTTPException
@@ -36,6 +38,10 @@ def connected_project(db: Session, project_id: str) -> Project:
 async def connect(db: Session, gitlab_id: str | int):
     async with gitlab_client() as client:
         data = await client.project(gitlab_id)
+    return save_project(db, data)
+
+
+def save_project(db: Session, data: dict) -> Project:
     project = Project(
         id=str(uuid5(NAMESPACE_URL, f"{owner_id()}:{data['id']}"))
         if owner_id()
@@ -49,6 +55,68 @@ async def connect(db: Session, gitlab_id: str | int):
     project = db.merge(project)
     db.commit()
     return project
+
+
+def pipeline_url_target(url: str) -> tuple[str, int]:
+    """Extract identifiers only; never send credentials to a user-supplied URL."""
+    url = url.strip()
+    invalid = HTTPException(422, "Enter a GitLab pipeline URL ending in /-/pipelines/123")
+    if any(ord(char) < 32 or ord(char) == 127 for char in url):
+        raise invalid
+    try:
+        target = urlsplit(url)
+        instance = urlsplit(str(get_settings().gitlab_url))
+        target_port = (
+            target.port if target.port is not None else (443 if target.scheme == "https" else 80)
+        )
+        instance_port = (
+            instance.port
+            if instance.port is not None
+            else (443 if instance.scheme == "https" else 80)
+        )
+    except ValueError as exc:
+        raise invalid from exc
+    if target.username is not None or target.password is not None:
+        raise invalid
+    if (target.scheme, target.hostname, target_port) != (
+        instance.scheme,
+        instance.hostname,
+        instance_port,
+    ):
+        raise HTTPException(
+            422, "Use a pipeline URL from the GitLab instance configured in Settings"
+        )
+    prefix = re.escape(unquote(instance.path).rstrip("/"))
+    match = re.fullmatch(
+        prefix + r"/(?P<project>[\w.-]+(?:/[\w.-]+)+)/-/pipelines/(?P<id>[1-9][0-9]{0,15})/?",
+        unquote(target.path),
+    )
+    if not match or any(part in (".", "..") for part in match["project"].split("/")):
+        raise invalid
+    pipeline_id = int(match["id"])
+    if pipeline_id > 2**53 - 1:
+        raise invalid
+    return match["project"], pipeline_id
+
+
+async def resolve_pipeline(db: Session, url: str):
+    if get_settings().demo_mode:
+        raise HTTPException(
+            409,
+            "Real pipeline URLs require a live GitLab connection; this workspace is in demo mode",
+        )
+    path, pipeline_id = pipeline_url_target(url)
+    async with gitlab_client() as client:
+        data = await client.project(path)
+        pipeline = await client.pipeline(data["id"], pipeline_id)
+        jobs = await client.jobs(data["id"], pipeline_id)
+    # Connect only after access to the pipeline and its jobs has been verified.
+    project = save_project(db, data)
+    return {
+        "project": project_out(project),
+        "pipeline": pipeline_out(pipeline),
+        "jobs": [job_out(job) for job in jobs],
+    }
 
 
 async def connected(db: Session):
