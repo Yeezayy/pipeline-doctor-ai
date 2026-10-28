@@ -1,0 +1,6 @@
+[SYNTHETIC EXAMPLE — not a real GitLab job log]
+$ docker push registry.example.com/demo/app:test
+The push refers to repository [registry.example.com/demo/app]
+unauthorized: authentication required
+denied: requested access to the resource is denied
+ERROR: Job failed: exit code 1

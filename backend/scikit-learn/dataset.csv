@@ -1,0 +1,7 @@
+log_path,label,incident_group
+logs/synthetic_job_001.txt,missing_dependency,synthetic_incident_001
+logs/synthetic_job_002.txt,missing_dependency,synthetic_incident_001
+logs/synthetic_job_003.txt,missing_file,synthetic_incident_002
+logs/synthetic_job_004.txt,authentication_error,synthetic_incident_003
+logs/synthetic_job_005.txt,compilation_error,synthetic_incident_004
+logs/synthetic_job_006.txt,invalid_configuration,synthetic_incident_005

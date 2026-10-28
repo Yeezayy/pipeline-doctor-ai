@@ -1,0 +1,5 @@
+[SYNTHETIC EXAMPLE — not a real GitLab job log]
+$ docker build -t example-app .
+#1 [internal] load build definition from Dockerfile
+ERROR: failed to solve: failed to read dockerfile: open Dockerfile: no such file or directory
+ERROR: Job failed: exit code 1

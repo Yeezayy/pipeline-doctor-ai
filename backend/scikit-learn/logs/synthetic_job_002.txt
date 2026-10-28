@@ -1,0 +1,9 @@
+[SYNTHETIC EXAMPLE — not a real GitLab job log]
+Retrying the same job on the same commit without changing dependencies
+Using image python:3.12-alpine
+$ python smoke_test.py
+Traceback (most recent call last):
+  File "smoke_test.py", line 1, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+ERROR: Job failed: exit code 1

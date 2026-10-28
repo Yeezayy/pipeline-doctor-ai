@@ -1,0 +1,6 @@
+[SYNTHETIC EXAMPLE — not a real GitLab job log]
+Using image node:24-alpine
+$ npm run build
+> tsc -b && vite build
+src/main.ts(18,7): error TS2322: Type 'string' is not assignable to type 'number'.
+ERROR: Job failed: exit code 2

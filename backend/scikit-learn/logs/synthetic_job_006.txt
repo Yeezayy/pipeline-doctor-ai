@@ -1,0 +1,7 @@
+[SYNTHETIC EXAMPLE — not a real GitLab job log]
+$ python validate_ci.py generated.gitlab-ci.yml
+Checking generated GitLab CI configuration
+yaml.scanner.ScannerError: mapping values are not allowed here
+  in "generated.gitlab-ci.yml", line 12, column 9
+Configuration validation failed before submitting the generated pipeline
+ERROR: Job failed: exit code 1
