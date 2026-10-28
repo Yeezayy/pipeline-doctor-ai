@@ -1,5 +1,5 @@
 import re
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import HTTPException
@@ -167,10 +167,44 @@ async def job_context(project: Project, pipeline_id: int, job_id: int, *, includ
             pipeline,
             job,
             demo.trace(pipeline_id),
-            "# Simulated CI configuration\nimage: alpine:3.21\n",
+            demo.ci_file(pipeline_id) if include_ci else None,
         )
     async with gitlab_client() as client:
         logs = await client.trace(project.gitlab_id, job_id)
         # Use immutable commit SHA, not a branch that could have moved.
         ci = await client.ci_file(project.gitlab_id, pipeline["sha"]) if include_ci else None
     return pipeline, job, logs, ci
+
+
+async def pipeline_ci(project: Project, pipeline_id: int):
+    if project.source == "demo":
+        pipeline = next((p for p in demo.pipelines() if p["id"] == pipeline_id), None)
+        if pipeline is None:
+            raise HTTPException(404, "Demo pipeline not found")
+        ci = demo.ci_file(pipeline_id)
+    else:
+        async with gitlab_client() as client:
+            pipeline = await client.pipeline(project.gitlab_id, pipeline_id)
+            ci = await client.ci_file(project.gitlab_id, pipeline["sha"])
+    # Mask before truncation, retaining source line numbers even for multiline keys.
+    safe = redact(ci, preserve_lines=True) if ci is not None else None
+    limit = 64_000
+    truncated = safe is not None and len(safe) > limit
+    if truncated:
+        end = safe.rfind("\n", 0, limit)
+        safe = safe[: end if end > 0 else limit]
+    return {
+        "path": ".gitlab-ci.yml",
+        "commit_sha": pipeline["sha"],
+        "text": safe,
+        "truncated": truncated,
+        "source": project.source,
+        "web_url": (
+            project.web_url.rstrip("/")
+            + "/-/blob/"
+            + quote(pipeline["sha"], safe="")
+            + "/.gitlab-ci.yml"
+            if project.source == "live"
+            else None
+        ),
+    }

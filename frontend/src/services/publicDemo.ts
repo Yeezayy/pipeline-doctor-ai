@@ -2,6 +2,7 @@ import type {
   Analysis,
   AuthSession,
   AvailableProject,
+  CIConfig,
   Diagnosis,
   Job,
   LogoutResult,
@@ -185,6 +186,31 @@ export const demoApi = {
   detail: async (id: string, pipeline: number) => {
     checkProject(id);
     return { pipeline: clone(getPipeline(pipeline)), jobs: jobs(pipeline) };
+  },
+  ci: async (id: string, pipeline: number): Promise<CIConfig> => {
+    checkProject(id);
+    const p = getPipeline(pipeline);
+    const job = jobs(pipeline)[0];
+    const examples = [
+      ["docker:27", "docker build -t storefront ."],
+      ["node:24-alpine", "npm run build"],
+      ["python:3.12-slim", "python -m pytest"],
+      ["alpine:3.21", "echo validate: configuration"],
+      ["docker:27", "docker push registry.example/storefront:latest"],
+      ["alpine:3.21", "python -m pytest tests/integration"],
+    ];
+    const [image, command] = examples[1048 - pipeline] || [
+      "node:24-alpine",
+      "npm test",
+    ];
+    return {
+      path: ".gitlab-ci.yml",
+      commit_sha: p.sha,
+      text: `# SIMULATED CI configuration; illustrative example only\nstages: [build, test, validate, deploy]\n\n${job.name}:\n  stage: ${job.stage}\n  image: ${image}\n  script:\n    - ${command}\n`,
+      truncated: false,
+      source: "demo",
+      web_url: null,
+    };
   },
   trace: async (id: string, pipeline: number, job: number) => {
     checkProject(id);

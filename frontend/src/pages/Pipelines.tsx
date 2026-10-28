@@ -4,8 +4,8 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
-  Copy,
+  ArrowUpRight,
+  GitCommitHorizontal,
   Link2,
   RefreshCw,
   Search,
@@ -16,6 +16,8 @@ import {
 import { useWorkspace } from "../hooks/useWorkspace";
 import { api } from "../services/api";
 import { Button } from "../components/ui/button";
+import { PipelineEvidence } from "../components/PipelineEvidence";
+import { gitlabLink } from "../lib/utils";
 import type { Project } from "../types";
 import {
   Empty,
@@ -235,6 +237,7 @@ export function PipelineDetail() {
   const id = Number(pipelineId);
   const navigate = useNavigate();
   const client = useQueryClient();
+  const { settings } = useWorkspace();
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
   const [context, setContext] = useState("");
   const query = useQuery({
@@ -245,11 +248,6 @@ export function PipelineDetail() {
     query.data?.jobs.find((j) => j.id === selectedJob) ||
     query.data?.jobs.find((j) => j.status === "failed") ||
     query.data?.jobs[0];
-  const trace = useQuery({
-    queryKey: ["trace", projectId, id, job?.id],
-    queryFn: () => api.trace(projectId, id, job!.id),
-    enabled: !!job,
-  });
   const analysis = useMutation({
     mutationFn: () => api.analyze(projectId, id, job!.id, context),
     onSuccess: (a) => {
@@ -258,19 +256,10 @@ export function PipelineDetail() {
       navigate(`/diagnosis/${a.id}`);
     },
   });
-  const copyLogs = useMutation({
-    mutationFn: async (text: string) => {
-      try {
-        await navigator.clipboard.writeText(text);
-        return text;
-      } catch {
-        throw new Error(
-          "Could not access the clipboard. Select and copy the displayed log excerpt instead.",
-        );
-      }
-    },
-  });
-  const copied = copyLogs.isSuccess && copyLogs.data === trace.data?.text;
+  const pipelineURL = gitlabLink(
+    query.data?.pipeline.web_url,
+    settings?.gitlab_url,
+  );
   return (
     <>
       <Link className="back-link" to="/pipelines">
@@ -280,9 +269,25 @@ export function PipelineDetail() {
       <PageHeading
         eyebrow={`PIPELINE #${id}`}
         title={query.data?.pipeline.ref || "Pipeline details"}
-        description="Inspect the job output before asking AI for a diagnosis."
+        description="Inspect job logs and the CI configuration at this run’s commit."
         action={query.data && <Status status={query.data.pipeline.status} />}
       />
+      {query.data && (
+        <div className="pipeline-meta">
+          <span>
+            <GitCommitHorizontal size={15} />
+            Commit{" "}
+            <code title={query.data.pipeline.sha}>
+              {query.data.pipeline.sha.slice(0, 12)}
+            </code>
+          </span>
+          {pipelineURL && (
+            <a href={pipelineURL} target="_blank" rel="noreferrer">
+              Open pipeline in GitLab <ArrowUpRight size={14} />
+            </a>
+          )}
+        </div>
+      )}
       <ErrorState error={query.error} />
       {query.isLoading ? (
         <Loading />
@@ -322,52 +327,11 @@ export function PipelineDetail() {
               )}
             </section>
             <div className="job-main">
-              <section className="panel">
-                <div className="panel-heading">
-                  <h2>
-                    <Terminal size={15} />
-                    {job?.name || "Job output"}
-                  </h2>
-                  <div className="log-actions">
-                    <span className="secure-label">
-                      <ShieldCheck size={13} />
-                      Secrets masked
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={
-                        !trace.data?.text ||
-                        trace.isFetching ||
-                        !!trace.error ||
-                        copyLogs.isPending
-                      }
-                      onClick={() => {
-                        if (trace.data?.text) copyLogs.mutate(trace.data.text);
-                      }}
-                    >
-                      {copied ? <Check size={13} /> : <Copy size={13} />}
-                      <span aria-live="polite">
-                        {copied ? "Logs copied" : "Copy logs"}
-                      </span>
-                    </Button>
-                  </div>
-                </div>
-                <ErrorState error={trace.error} />
-                <ErrorState error={copyLogs.error} />
-                {trace.isLoading ? (
-                  <Loading text="Fetching sanitized job trace…" />
-                ) : (
-                  <pre className="log-view">
-                    {trace.data?.text || "No trace available."}
-                  </pre>
-                )}
-                {trace.data?.truncated && (
-                  <p className="panel-note">
-                    Excerpt only. The middle of this trace has been omitted.
-                  </p>
-                )}
-              </section>
+              <PipelineEvidence
+                projectId={projectId}
+                pipeline={query.data.pipeline}
+                job={job}
+              />
               <section className="panel analyze-panel">
                 <div>
                   <span className="eyebrow">A SECOND PAIR OF EYES</span>

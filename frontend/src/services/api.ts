@@ -2,6 +2,7 @@ import type {
   Analysis,
   AuthSession,
   AvailableProject,
+  CIConfig,
   Job,
   LogoutResult,
   Pipeline,
@@ -92,6 +93,8 @@ const liveApi = {
     request<{ text: string; truncated: boolean; source: string }>(
       `/projects/${id}/pipelines/${pipeline}/jobs/${job}/trace`,
     ),
+  ci: (id: string, pipeline: number) =>
+    request<CIConfig>(`/projects/${id}/pipelines/${pipeline}/ci`),
   analyze: (
     project_id: string,
     pipeline_id: number,

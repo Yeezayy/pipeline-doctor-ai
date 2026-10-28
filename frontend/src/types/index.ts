@@ -53,6 +53,14 @@ export interface ResolvedPipeline {
   pipeline: Pipeline;
   jobs: Job[];
 }
+export interface CIConfig {
+  path: string;
+  commit_sha: string;
+  text: string | null;
+  truncated: boolean;
+  source: string;
+  web_url: string | null;
+}
 export interface Diagnosis {
   summary: string;
   root_cause: string;

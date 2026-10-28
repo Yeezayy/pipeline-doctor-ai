@@ -98,6 +98,25 @@ def jobs(pipeline_id):
     ]
 
 
+def ci_file(pipeline_id):
+    job = jobs(pipeline_id)[0]
+    examples = [
+        ("docker:27", "docker build -t storefront ."),
+        ("node:24-alpine", "npm run build"),
+        ("python:3.12-slim", "python -m pytest"),
+        ("alpine:3.21", "echo validate: configuration"),
+        ("docker:27", "docker push registry.example/storefront:latest"),
+        ("alpine:3.21", "python -m pytest tests/integration"),
+    ]
+    i = incident_index(pipeline_id)
+    image, command = examples[i] if i < len(examples) else ("node:24-alpine", "npm test")
+    return (
+        "# SIMULATED CI configuration; illustrative example only\n"
+        "stages: [build, test, validate, deploy]\n\n"
+        f"{job['name']}:\n  stage: {job['stage']}\n  image: {image}\n  script:\n    - {command}\n"
+    )
+
+
 def trace(pipeline_id):
     i = incident_index(pipeline_id)
     error = INCIDENTS[i][3] if i < 6 else "All checks passed."

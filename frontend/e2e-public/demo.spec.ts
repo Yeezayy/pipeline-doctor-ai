@@ -33,6 +33,14 @@ test("public demo works without any API, including deep-link reloads", async ({
   await expect(page.locator(".log-view")).toContainText("Dockerfile");
   await page.reload();
   await expect(page.locator(".log-view")).toContainText("Dockerfile");
+  await page
+    .getByRole("tab", { name: "CI configuration", exact: true })
+    .click();
+  await expect(page.locator(".ci-source")).toContainText(
+    "SIMULATED CI configuration",
+  );
+  await expect(page.locator(".ci-context")).toContainText("Simulated example");
+  await page.getByRole("tab", { name: "Job logs" }).click();
   await page.getByRole("button", { name: "Diagnose this job" }).click();
   await expect(
     page.getByRole("heading", { name: "Dockerfile not found" }),

@@ -278,6 +278,7 @@ async def test_token_exchange_requires_the_requested_read_api_scope(
     [
         ("GET", "/api/projects/unconnected/pipelines", None),
         ("GET", "/api/projects/unconnected/pipelines/1", None),
+        ("GET", "/api/projects/unconnected/pipelines/1/ci", None),
         ("GET", "/api/projects/unconnected/pipelines/1/jobs/2/trace", None),
         (
             "POST",

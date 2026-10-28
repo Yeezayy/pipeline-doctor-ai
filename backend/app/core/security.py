@@ -30,7 +30,7 @@ PATTERNS = [
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
-def redact(text: str) -> str:
+def redact(text: str, *, preserve_lines: bool = False) -> str:
     settings = get_settings()
     text = ANSI.sub("", text)
     principal = identity.get()
@@ -44,9 +44,18 @@ def redact(text: str) -> str:
         principal.refresh_token,
     ):
         if secret:
-            text = text.replace(secret, REDACTED)
+            replacement = REDACTED + ("\n" * secret.count("\n") if preserve_lines else "")
+            text = text.replace(secret, replacement)
     for pattern, replacement in PATTERNS:
-        text = pattern.sub(replacement, text)
+        if preserve_lines:
+
+            def substitute(match, template=replacement):
+                clean = match.expand(template)
+                return clean + "\n" * max(0, match.group().count("\n") - clean.count("\n"))
+
+            text = pattern.sub(substitute, text)
+        else:
+            text = pattern.sub(replacement, text)
     return text
 
 

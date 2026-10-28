@@ -35,6 +35,7 @@ This is a **functional, local-development MVP**, not an autonomous repair agent 
 ## What works today
 
 - **GitLab connection:** paste a pipeline URL to connect its project and open the run directly, or discover accessible member projects and browse paginated pipelines. Inspect details and jobs, fetch traces and the root `.gitlab-ci.yml` at the pipeline's immutable commit.
+- **Pipeline evidence:** switch between job logs and a read-only CI configuration tab. Errors stand out in logs; YAML has syntax highlighting, line numbers, copy and a link to the file at the run's commit. The root file is shown with best-effort secret masking; `include` files are not expanded. Missing or inaccessible configuration does not block log inspection.
 - **Personal accounts:** GitLab OAuth + PKCE, encrypted server-side tokens, HttpOnly sessions, CSRF protection and per-user ownership. The GitLab.com public client is registered; self-managed instances need their own: [OAuth guide](docs/gitlab-oauth.md).
 - **Public landing:** a SaaS-style presentation, actual demo captures and entry points to the workbench or account login. The dashboard lives at `/dashboard`.
 - **Interactive 3D:** a Three.js pipeline illustration built with React Three Fiber and Drei. Select stages, orbit and pause motion. It is illustrative, not live GitLab data. The renderer is lazy-loaded, motion stops off-screen/in background tabs, reduced motion is respected, and an accessible fallback works without WebGL.

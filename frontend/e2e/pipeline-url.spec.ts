@@ -45,6 +45,7 @@ async function mockWorkspace(
     log_max_chars: 16000,
     auth_enabled: false,
   };
+  const ciRequests: string[] = [];
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/settings") {
@@ -66,6 +67,18 @@ async function mockWorkspace(
       expect(route.request().postDataJSON()).toEqual({ url: pipelineURL });
       projects = [...projects, project];
       await route.fulfill({ json: result });
+    } else if (path.endsWith("/pipelines/123/ci")) {
+      ciRequests.push(path);
+      await route.fulfill({
+        json: {
+          path: ".gitlab-ci.yml",
+          commit_sha: "immutable-commit",
+          source: "live",
+          truncated: false,
+          web_url: project.web_url + "/-/blob/immutable-commit/.gitlab-ci.yml",
+          text: "include:\n  - local: .gitlab/ci/build.yml\nbuild:\n  script:\n    - echo '<img src=x onerror=alert(1)>'\n",
+        },
+      });
     } else if (path.endsWith("/pipelines/123/jobs/9/trace")) {
       await route.fulfill({
         json: {
@@ -83,7 +96,164 @@ async function mockWorkspace(
       throw new Error(`Unexpected pipeline URL request: ${path}`);
     }
   });
+  return ciRequests;
 }
+
+test("pipeline tabs show highlighted YAML at the run commit and copy only source", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const requests = await mockWorkspace(page);
+  await page.goto("/pipelines/private-7/123");
+  await expect(page.locator(".log-view")).toContainText("build failed");
+  expect(requests).toHaveLength(0);
+  await expect(page.locator(".log-error")).toContainText("build failed");
+  await page.getByRole("button", { name: "Copy logs", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Logs copied" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    await page.locator(".log-view").innerText(),
+  );
+  await page
+    .getByRole("tab", { name: "CI configuration", exact: true })
+    .click();
+  const source = page.locator(".ci-source");
+  await expect(source).toContainText("include:");
+  await expect(source.locator(".hljs-attr").first()).toContainText("include");
+  await expect(source.locator("img")).toHaveCount(0);
+  await expect(page.locator(".ci-context")).toContainText("not expanded");
+  await expect(
+    page.getByRole("link", { name: "View in GitLab" }),
+  ).toHaveAttribute("href", /immutable-commit\/\.gitlab-ci.yml$/);
+  await page.getByRole("button", { name: "Copy YAML", exact: true }).click();
+  await expect(page.getByRole("button", { name: "YAML copied" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    await source.textContent(),
+  );
+  await page
+    .getByRole("tab", { name: "CI configuration", exact: true })
+    .press("Home");
+  await expect(page.getByRole("tab", { name: "Job logs" })).toBeFocused();
+  await expect(page.locator(".log-view")).toBeVisible();
+  await page.getByRole("tab", { name: "Job logs" }).press("ArrowRight");
+  await expect(source).toBeVisible();
+  expect(requests).toHaveLength(1);
+  await page.screenshot({
+    path: "/private/tmp/pipeline-doctor-ci-desktop.png",
+    fullPage: true,
+  });
+});
+
+for (const text of [null, ""]) {
+  test(`unavailable or empty YAML preserves logs (${text === null ? "missing" : "empty"})`, async ({
+    page,
+  }) => {
+    await mockWorkspace(page);
+    await page.route("**/pipelines/123/ci", (route) =>
+      route.fulfill({
+        json: {
+          path: ".gitlab-ci.yml",
+          commit_sha: "immutable-commit",
+          source: "live",
+          truncated: false,
+          web_url: null,
+          text,
+        },
+      }),
+    );
+    await page.goto("/pipelines/private-7/123");
+    await page
+      .getByRole("tab", { name: "CI configuration", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name:
+          text === null
+            ? "CI configuration unavailable"
+            : "Empty CI configuration",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Copy YAML" }),
+    ).toBeDisabled();
+    await page.getByRole("tab", { name: "Job logs" }).click();
+    await expect(page.locator(".log-view")).toContainText("build failed");
+  });
+}
+
+test("configuration errors can be retried without losing the pipeline", async ({
+  page,
+}) => {
+  await mockWorkspace(page);
+  let unavailable = true;
+  await page.route("**/pipelines/123/ci", async (route) => {
+    if (unavailable)
+      await route.fulfill({
+        status: 502,
+        json: { detail: "GitLab unavailable" },
+      });
+    else await route.fallback();
+  });
+  await page.goto("/pipelines/private-7/123");
+  await page
+    .getByRole("tab", { name: "CI configuration", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("GitLab unavailable");
+  await expect(
+    page.getByRole("button", { name: "Retry configuration" }),
+  ).toBeVisible();
+  unavailable = false;
+  await page.getByRole("button", { name: "Retry configuration" }).click();
+  await expect(page.locator(".ci-source")).toContainText("build:");
+});
+
+test("clipboard failure keeps the selected job logs readable", async ({
+  page,
+}) => {
+  await mockWorkspace(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: async () => {
+          throw new Error("Clipboard unavailable");
+        },
+      },
+    });
+  });
+  await page.goto("/pipelines/private-7/123");
+  await page.getByRole("button", { name: "Copy logs", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Could not access the clipboard",
+  );
+  await expect(page.locator(".log-view")).toContainText("build failed");
+});
+
+test("CI remains inspectable when no jobs exist and fits mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockWorkspace(page);
+  await page.route("**/pipelines/123", (route) =>
+    route.fulfill({ json: { pipeline: result.pipeline, jobs: [] } }),
+  );
+  await page.goto("/pipelines/private-7/123");
+  await expect(
+    page.getByRole("heading", { name: "No jobs available" }),
+  ).toBeVisible();
+  await page
+    .getByRole("tab", { name: "CI configuration", exact: true })
+    .click();
+  await expect(page.locator(".ci-source")).toContainText("build:");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+  ).toBe(false);
+  await page.screenshot({
+    path: "/private/tmp/pipeline-doctor-ci-mobile.png",
+    fullPage: true,
+  });
+});
 
 for (const existingProject of [false, true]) {
   test(`pipeline URL opens the run and selects its project (existing project: ${existingProject})`, async ({

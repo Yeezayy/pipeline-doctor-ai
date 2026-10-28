@@ -1034,6 +1034,131 @@ footer {
   flex-direction: column;
   gap: 22px;
 }
+.pipeline-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  color: #8b99ae;
+  font-size: 11px;
+  margin: -10px 0 24px;
+}
+.pipeline-meta span,
+.pipeline-meta a,
+.code-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.pipeline-meta code {
+  color: #bdcbdc;
+}
+.pipeline-meta a,
+.code-source-link {
+  color: #a8e1bf;
+}
+.evidence-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px;
+  border-bottom: 1px solid #2b303c;
+}
+.evidence-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 16px 10px 14px;
+  color: #8795ab;
+  font-size: 11px;
+}
+.evidence-tabs button[aria-selected="true"] {
+  border-bottom-color: #a8e1bf;
+  color: #c5e7d2;
+}
+.evidence-toolbar {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.evidence-panel .error-box {
+  margin: 12px 16px;
+}
+.code-source-link {
+  font-size: 10px;
+}
+.ci-context {
+  margin: 0;
+  padding: 0 20px 16px;
+  font-size: 10px;
+  color: #91a0b5;
+}
+.ci-context span {
+  display: block;
+  margin-top: 6px;
+}
+.ci-code-view {
+  display: flex;
+  overflow: auto;
+  max-height: 560px;
+  min-height: 320px;
+  background: #0e1118;
+  border-top: 1px solid #2b303c;
+}
+.ci-code-view pre {
+  margin: 0;
+  font-size: 11px;
+  line-height: 22px;
+  tab-size: 2;
+  white-space: pre;
+}
+.ci-line-numbers {
+  position: sticky;
+  left: 0;
+  flex: 0 0 auto;
+  padding: 20px 12px 20px 16px;
+  text-align: right;
+  user-select: none;
+  color: #58667d;
+  background: #10151e;
+  border-right: 1px solid #222c3a;
+}
+.ci-source {
+  padding: 20px 22px 20px 16px;
+  color: #c3cddc;
+  min-width: max-content;
+}
+.ci-source code {
+  font: inherit;
+}
+.ci-source .hljs-attr {
+  color: #9bc7ed;
+}
+.ci-source .hljs-string {
+  color: #b8d8a3;
+}
+.ci-source .hljs-comment {
+  color: #79869a;
+  font-style: italic;
+}
+.ci-source .hljs-number,
+.ci-source .hljs-literal {
+  color: #dbb58b;
+}
+.ci-source .hljs-meta,
+.ci-source .hljs-bullet,
+.ci-source .hljs-type {
+  color: #c6a7e4;
+}
+.ci-retry {
+  padding: 0 20px 20px;
+}
+.log-error {
+  background: #d98b8b10;
+  color: #e5a6a6;
+}
 .secure-label {
   display: inline-flex;
   align-items: center;

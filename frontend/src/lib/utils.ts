@@ -13,3 +13,22 @@ export function date(value: string) {
     minute: "2-digit",
   });
 }
+
+export function gitlabLink(
+  value: string | null | undefined,
+  instance: string | undefined,
+) {
+  if (!value || !instance) return null;
+  try {
+    const url = new URL(value);
+    const base = new URL(instance);
+    return ["http:", "https:"].includes(url.protocol) &&
+      url.origin === base.origin &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}

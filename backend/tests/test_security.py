@@ -45,3 +45,13 @@ def test_budget_preserves_head_and_tail_after_redaction():
     assert result.startswith("START")
     assert result.endswith("ERROR: missing Dockerfile")
     assert "do-not-send" not in result
+
+
+def test_line_preserving_redaction_keeps_source_line_numbers():
+    get_settings().gitlab_token = "multi\nline\ncredential"
+    text = "multi\nline\ncredential\n-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\nnext: value\n"
+    result = redact(text, preserve_lines=True)
+    assert result.count("\n") == text.count("\n")
+    assert result.splitlines().index("next: value") == text.splitlines().index("next: value")
+    assert "credential" not in result
+    assert "secret" not in result

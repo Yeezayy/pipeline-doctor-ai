@@ -138,6 +138,12 @@ async def trace(project_id: str, pipeline_id: int, job_id: int, db: Session = De
     }
 
 
+@router.get("/projects/{project_id}/pipelines/{pipeline_id}/ci")
+async def pipeline_ci(project_id: str, pipeline_id: int, db: Session = Depends(get_db)):
+    project = pipelines.connected_project(db, project_id)
+    return await pipelines.pipeline_ci(project, pipeline_id)
+
+
 def get_analysis(db: Session, analysis_id: str):
     prune(db)
     analysis = db.get(Analysis, analysis_id)
