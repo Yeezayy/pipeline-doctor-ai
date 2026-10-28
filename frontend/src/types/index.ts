@@ -48,6 +48,11 @@ export interface Job {
   status: string;
   duration: number | null;
 }
+export interface ResolvedPipeline {
+  project: Project;
+  pipeline: Pipeline;
+  jobs: Job[];
+}
 export interface Diagnosis {
   summary: string;
   root_cause: string;

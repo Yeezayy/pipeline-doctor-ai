@@ -88,6 +88,15 @@ class ConnectRequest(BaseModel):
     gitlab_id: int = Field(gt=0)
 
 
+class PipelineURLRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+
+
+@router.post("/pipelines/resolve")
+async def resolve_pipeline(body: PipelineURLRequest, db: Session = Depends(get_db)):
+    return await pipelines.resolve_pipeline(db, body.url)
+
+
 @router.post("/projects", status_code=201)
 async def connect(body: ConnectRequest, db: Session = Depends(get_db)):
     if get_settings().demo_mode:

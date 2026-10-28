@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   Copy,
+  Link2,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -15,6 +16,7 @@ import {
 import { useWorkspace } from "../hooks/useWorkspace";
 import { api } from "../services/api";
 import { Button } from "../components/ui/button";
+import type { Project } from "../types";
 import {
   Empty,
   ErrorState,
@@ -25,10 +27,29 @@ import {
 } from "../components/common";
 
 export function Pipelines() {
-  const { project, loading, error } = useWorkspace();
+  const { project, settings, selectProject, loading, error } = useWorkspace();
+  const navigate = useNavigate();
+  const client = useQueryClient();
+  const [pipelineURL, setPipelineURL] = useState("");
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const openPipeline = useMutation({
+    mutationFn: () => api.resolvePipeline(pipelineURL.trim()),
+    onSuccess: async ({ project: connected, pipeline, jobs }) => {
+      await client.cancelQueries({ queryKey: ["projects"] });
+      client.setQueryData<Project[]>(["projects"], (projects = []) => [
+        ...projects.filter((p) => p.id !== connected.id),
+        connected,
+      ]);
+      selectProject(connected.id);
+      client.setQueryData(["pipeline", connected.id, pipeline.id], {
+        pipeline,
+        jobs,
+      });
+      navigate(`/pipelines/${connected.id}/${pipeline.id}`);
+    },
+  });
   const query = useQuery({
     queryKey: ["pipelines", project?.id, page],
     queryFn: () => api.pipelines(project!.id, page),
@@ -63,11 +84,65 @@ export function Pipelines() {
           </Button>
         }
       />
+      {!settings?.demo_mode && (
+        <section className="panel pipeline-url-panel">
+          <h2>Open a GitLab pipeline</h2>
+          <p id="pipeline-url-help">
+            Paste a pipeline link from your GitLab instance. Its project will be
+            connected to your workspace so you can inspect the run and its jobs.
+          </p>
+          <form
+            className="pipeline-url-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (pipelineURL.trim() && !openPipeline.isPending)
+                openPipeline.mutate();
+            }}
+          >
+            <div className="search-form">
+              <Link2 size={16} aria-hidden="true" />
+              <label htmlFor="pipeline-url" className="sr-only">
+                GitLab pipeline URL
+              </label>
+              <input
+                id="pipeline-url"
+                type="url"
+                required
+                maxLength={2048}
+                aria-describedby="pipeline-url-help"
+                value={pipelineURL}
+                onChange={(event) => {
+                  setPipelineURL(event.target.value);
+                  openPipeline.reset();
+                }}
+                disabled={openPipeline.isPending}
+                placeholder={`${settings?.gitlab_url.replace(/\/$/, "")}/group/project/-/pipelines/123`}
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={!pipelineURL.trim() || openPipeline.isPending}
+            >
+              {openPipeline.isPending ? (
+                <RefreshCw size={14} className="spin" />
+              ) : (
+                <ArrowRight size={14} />
+              )}
+              {openPipeline.isPending ? "Opening pipeline…" : "Open pipeline"}
+            </Button>
+          </form>
+          <ErrorState error={openPipeline.error} />
+        </section>
+      )}
       <ErrorState error={query.error} />
       {!project ? (
         <Empty
           title="Connect your first project"
-          description="Choose a GitLab project in Settings."
+          description={
+            settings?.demo_mode
+              ? "Choose a GitLab project in Settings."
+              : "Paste a pipeline URL above, or choose a GitLab project in Settings."
+          }
           action={<Link to="/settings">Open Settings →</Link>}
         />
       ) : (

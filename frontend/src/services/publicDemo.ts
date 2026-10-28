@@ -7,6 +7,7 @@ import type {
   LogoutResult,
   Pipeline,
   Project,
+  ResolvedPipeline,
   Settings,
 } from "../types";
 
@@ -175,6 +176,8 @@ export const demoApi = {
         ]
       : [],
   connect: async (_id: number): Promise<Project> => unavailable(),
+  resolvePipeline: async (_url: string): Promise<ResolvedPipeline> =>
+    unavailable(),
   pipelines: async (id: string, page = 1): Promise<Pipeline[]> => {
     checkProject(id);
     return page === 1 ? clone(pipelines) : [];

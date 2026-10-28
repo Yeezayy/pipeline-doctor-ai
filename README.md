@@ -30,11 +30,11 @@ An open-source investigation workbench that turns failed GitLab jobs into eviden
 
 A red pipeline rarely explains itself. The important line is buried in runner noise, the job image changed three commits ago, and “retry” is not a diagnosis. Pipeline Doctor puts the job trace, a structured explanation and a contextual assistant in one focused workspace.
 
-This is a **functional, local-development MVP**, not an autonomous repair agent or a hosted multi-tenant service. Demo data is always labeled. Live integrations require your own GitLab and LLM credentials.
+This is a **functional, local-development MVP**, not an autonomous repair agent or a hosted multi-tenant service. Demo data is always labeled. Connect your own GitLab account to browse real pipelines; an LLM provider key is required only for live diagnosis and chat.
 
 ## What works today
 
-- **GitLab connection:** discover accessible member projects, connect a project, browse paginated pipelines, inspect details and jobs, fetch traces and the root `.gitlab-ci.yml` at the pipeline's immutable commit.
+- **GitLab connection:** paste a pipeline URL to connect its project and open the run directly, or discover accessible member projects and browse paginated pipelines. Inspect details and jobs, fetch traces and the root `.gitlab-ci.yml` at the pipeline's immutable commit.
 - **Personal accounts:** GitLab OAuth + PKCE, encrypted server-side tokens, HttpOnly sessions, CSRF protection and per-user ownership. The GitLab.com public client is registered; self-managed instances need their own: [OAuth guide](docs/gitlab-oauth.md).
 - **Public landing:** a SaaS-style presentation, actual demo captures and entry points to the workbench or account login. The dashboard lives at `/dashboard`.
 - **Interactive 3D:** a Three.js pipeline illustration built with React Three Fiber and Drei. Select stages, orbit and pause motion. It is illustrative, not live GitLab data. The renderer is lazy-loaded, motion stops off-screen/in background tabs, reduced motion is respected, and an accessible fallback works without WebGL.
@@ -50,32 +50,63 @@ This is a **functional, local-development MVP**, not an autonomous repair agent 
 
 ## Quick start
 
-### Docker Compose — recommended
+### Docker Compose — connect your GitLab account (recommended)
 
-Requirements: Git, Docker Engine/Desktop running, Docker Compose v2.
+Requirements: Git, Docker Engine/Desktop running, Docker Compose **2.24+**, and a GitLab.com account.
 
 ```bash
 git clone https://github.com/Yeezayy/pipeline-doctor-ai.git
 cd pipeline-doctor-ai
-cp .env.example .env
-docker compose up --build -d
+docker compose -f compose.yaml -f compose.local.yaml up --build -d
 ```
 
-- App: **http://localhost:8080**
+1. Open **http://localhost:8080**.
+2. Click **Continue with GitLab** and authorize your account on GitLab.
+3. In **Settings → Connect a project**, choose a project you can access.
+4. Open **Pipelines**, select a pipeline and inspect its jobs and logs.
+
+Already have the failing pipeline link? Open **Pipelines**, paste its GitLab URL (for example, `https://gitlab.com/group/project/-/pipelines/123`) and click **Open pipeline**. The app checks your access, connects that project to your workspace and opens the run directly, even if it is outside the current list page. URLs must belong to the configured GitLab instance. This shortcut is available in live mode and needs no LLM key.
+
+**No `.env`, personal access token or client secret is needed for this GitLab.com login.** The public OAuth Application ID is included in the repository. GitLab browsing works without an LLM key; configure one below to use live diagnosis and chat. Self-managed GitLab needs its own application registration: [OAuth guide](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce).
+
+**Use `http://localhost:8080` consistently.** The registered callback is `http://localhost:8080/api/auth/gitlab/callback`; using `127.0.0.1` or another port can break the login flow.
+
+- App and account settings: **http://localhost:8080/settings**
 - API docs: **http://localhost:8000/docs**
 - Health: **http://localhost:8000/health** (includes a database connectivity check)
 
 Compose waits for PostgreSQL, runs a one-shot Alembic migration, then starts the API and nginx frontend. The database is not published on a host port. All published application ports bind to `127.0.0.1`.
 
+Keep both Compose files in commands that start or recreate the GitLab account edition:
+
 ```bash
-docker compose ps
-docker compose logs -f backend
-docker compose down
+docker compose -f compose.yaml -f compose.local.yaml ps
+docker compose -f compose.yaml -f compose.local.yaml logs --tail=100 -f backend
+docker compose -f compose.yaml -f compose.local.yaml down
 ```
 
-`down` preserves the PostgreSQL volume. Do not delete it unless you intend to erase saved analyses. If port 8000 is occupied, use `BACKEND_PORT=8001 docker compose up --build -d`; the frontend proxy does not change.
+`down` preserves saved analyses and the local OAuth encryption key. **Do not use `down -v` unless you intend to delete the database and encryption-key volumes.** Back up both volumes together if you need to retain encrypted GitLab credentials.
 
-### Without Docker — fastest contribution loop
+### Docker Compose — demo without a GitLab account
+
+From the repository root, with no `.env` or with `AUTH_MODE=local` and `DEMO_MODE=true` in an existing `.env`:
+
+```bash
+docker compose up --build -d
+```
+
+Open **http://localhost:8080**. This starts simulated pipelines, diagnoses and chat, with no account or provider key required. **Plain `docker compose up` uses demo defaults; it does not enable GitLab account login.** See [Try the demo](#try-the-demo) for a guided example.
+
+### Common startup and login problems
+
+- **No GitLab login / only demo pipelines:** start with both `compose.yaml` and `compose.local.yaml`, using the recommended command above. Existing demo data is not converted into live projects.
+- **GitLab rejects the callback or the session fails:** open `http://localhost:8080` and start login again. The registered callback must match the scheme, hostname and port exactly.
+- **OAuth token exchange returns `invalid_client`:** the OAuth application must have **Confidential unchecked**. This is a maintainer-side GitLab registration setting; see the [OAuth guide](docs/gitlab-oauth.md).
+- **GitLab works but diagnosis/chat fails:** configure the [LLM provider](#configure-live-diagnosis-and-chat) and recreate the backend with both Compose files.
+- **App does not open:** run the `ps` and backend log commands above. Docker must be running; the frontend starts only after migrations succeed and the backend is healthy.
+- **Port 8000 is occupied:** use `BACKEND_PORT=8001 docker compose -f compose.yaml -f compose.local.yaml up --build -d`. API docs and health then use port 8001; the app and OAuth callback stay on port 8080.
+
+### Without Docker — contribution loop (demo by default)
 
 Requirements: [uv](https://docs.astral.sh/uv/), Python 3.12+, Node.js 24 LTS and npm. SQLite is an intentional **local-development fallback**; PostgreSQL is the Compose/CI database.
 
@@ -113,16 +144,50 @@ Demo and live projects/analyses are isolated by source. Switching modes never si
 
 ## Connect a real GitLab project
 
-**The intended user-friendly local flow is public OAuth + PKCE:** users run the app locally and authorize their own GitLab account, with no personal token or client secret to paste. The GitLab.com public Application ID is registered and shipped in `backend/app/core/gitlab-registration.json`; the application must be a public client (**Confidential unchecked**). Self-managed instances need their own registration. See [the exact maintainer and user steps](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The static website is never involved in real GitLab authentication.
+### Personal GitLab account
+
+Use the [recommended Docker quick start](#docker-compose--connect-your-gitlab-account-recommended). It enables `AUTH_MODE=gitlab`, `DEMO_MODE=false` and public OAuth + PKCE. The GitLab.com public Application ID is shipped in `backend/app/core/gitlab-registration.json`; the application must be a public client (**Confidential unchecked**). Self-managed instances need their own registration. See [the exact maintainer and user steps](docs/gitlab-oauth.md#simplified-local-account-login-public-client--pkce). The static public website is only a demo; real authentication happens through your local backend.
 
 OAuth requests **`read_api` only**. This grants read access to API resources available to your account, not just projects selected in this app; pipeline/log/CI inspection is restricted by the app to projects you explicitly connect. Previous broader grants need [manual revocation and reauthorization](docs/gitlab-oauth.md#permission-scope-and-upgrading-an-existing-authorization) to narrow their scopes. If logout cannot confirm revocation, the UI keeps a warning in that tab with instructions to revoke access in GitLab.
 
-For an operator deliberately choosing a confidential OAuth client, the alternative [server setup](docs/gitlab-oauth.md#alternative-confidential-server-application) still exists. It is not needed by public demo visitors. The instructions below describe the separate **local-only shared-token mode** (`AUTH_MODE=local`).
+### Configure live diagnosis and chat
+
+Create a root `.env` from `.env.example` **only if it does not already exist**, then fill in your provider settings locally:
+
+```dotenv
+LLM_API_KEY=your-provider-key
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4.1-mini
+LLM_OUTPUT_MODE=json_schema
+```
+
+Keep the key in the ignored `.env`, never in frontend variables or Git. The GitLab account Compose override supplies the required live/OAuth mode settings even if `.env.example` contains demo defaults. Apply provider changes with:
+
+```bash
+docker compose -f compose.yaml -f compose.local.yaml up -d --force-recreate backend
+```
+
+By default, diagnoses use **native JSON-schema output** through LangChain's `ChatOpenAI.with_structured_output`. If an OpenAI-compatible gateway rejects `response_format`, explicitly set `LLM_OUTPUT_MODE=prompt_json`: the schema is included in the system prompt and the plain JSON reply is strictly validated locally. Invalid, truncated or extra-field output is rejected, never repaired or silently replaced with demo data. Provider compatibility is not universal. The model name is configurable; the default is not a claim that it is the newest or best model.
+
+For **Experiential GLM-5.3 Uncensored**, keep your Experiential key in the ignored `.env` and use:
+
+```dotenv
+LLM_BASE_URL=https://api.experientiallabs.ai/v1
+LLM_MODEL=glm-5.3-uncensored:free
+LLM_OUTPUT_MODE=prompt_json
+```
+
+The `:free` model ID is explicit: the app never falls back to the unsuffixed model. Availability and pricing are controlled by the provider. These settings affect only the local backend, not the public simulated demo. Local schema validation does not guarantee that a diagnosis is correct; secret masking and exact-evidence checks still apply.
+
+### Alternative: local shared access token
+
+Use this mode only if you deliberately want a shared server-side GitLab token instead of personal account login. For an operator choosing a confidential OAuth client, a separate [server setup](docs/gitlab-oauth.md#alternative-confidential-server-application) is also documented.
 
 1. Create a **read-only** personal or project access token with `read_api` and appropriate project membership. This includes Repository Files API reads; no Git-over-HTTP scope or write access is needed.
 2. Edit the server environment, never frontend variables:
 
 ```dotenv
+AUTH_MODE=local
 DEMO_MODE=false
 GITLAB_URL=https://gitlab.com
 GITLAB_TOKEN=
@@ -135,21 +200,11 @@ APP_API_KEY=
 
 Fill the empty values locally, **never commit them**. `GITLAB_PROJECT_ID` is optional: a numeric ID or `group/project` path auto-connects when no live project is connected. Otherwise use **Settings → Connect a project**. `GITLAB_URL` can point to your self-managed instance, including an installation subpath. TLS certificates must be trusted; verification is never disabled.
 
-3. Configure an OpenAI or OpenAI-compatible provider. By default, diagnoses use **native JSON-schema output** through LangChain's `ChatOpenAI.with_structured_output`. If the gateway rejects `response_format`, explicitly set `LLM_OUTPUT_MODE=prompt_json`: the schema is included in the system prompt and the plain JSON reply is strictly validated locally. Invalid, truncated or extra-field output is rejected, never repaired or silently replaced with demo data. Provider compatibility is not universal. The model name is configurable; the default is not a claim that it is the newest or best model.
-4. Apply environment changes: `docker compose up -d --force-recreate backend`. In local development, restart the API with the new environment.
-5. Test GitLab connectivity in Settings, connect a project, select a failed job and request a diagnosis.
+3. Configure the [LLM provider](#configure-live-diagnosis-and-chat) if you want diagnosis/chat.
+4. Apply environment changes with **only the base Compose file**: `docker compose -f compose.yaml up -d --force-recreate backend`. In local development, restart the API with the new environment.
+5. Test GitLab connectivity in Settings, connect a project and inspect its pipelines. Select a failed job to request a diagnosis once the provider is configured.
 
 GitLab browsing works without an LLM key; live analysis/chat returns an explicit configuration error until a provider is configured. Failed GitLab calls are never replaced with demo data. Root CI files missing or forbidden are treated as unavailable. HTTP errors, malformed lists, permissions, rate limits and timeouts have explicit error responses.
-
-For **Experiential GLM-5.3 Uncensored**, keep your Experiential key in the ignored `.env` and use:
-
-```dotenv
-LLM_BASE_URL=https://api.experientiallabs.ai/v1
-LLM_MODEL=glm-5.3-uncensored:free
-LLM_OUTPUT_MODE=prompt_json
-```
-
-The `:free` model ID is explicit: the unsuffixed ID is billed from credits, and the app never falls back to it. Free-tier availability and pricing are controlled by the provider. These settings affect only the local backend, not the public simulated demo. Local schema validation does not guarantee that a diagnosis is correct; secret masking and exact-evidence checks still apply.
 
 ### Configuration reference
 
