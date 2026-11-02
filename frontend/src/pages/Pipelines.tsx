@@ -29,6 +29,11 @@ import {
 } from "../components/common";
 
 export function Pipelines() {
+  const { project } = useWorkspace();
+  return <PipelineWorkspace key={project?.id || "unconnected"} />;
+}
+
+function PipelineWorkspace() {
   const { project, settings, selectProject, loading, error } = useWorkspace();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -244,6 +249,13 @@ export function PipelineDetail() {
     queryKey: ["pipeline", projectId, id],
     queryFn: () => api.detail(projectId, id),
   });
+  const refresh = useMutation({
+    mutationFn: async () => {
+      const result = await query.refetch();
+      if (result.error) throw result.error;
+      await client.invalidateQueries({ queryKey: ["trace", projectId, id] });
+    },
+  });
   const job =
     query.data?.jobs.find((j) => j.id === selectedJob) ||
     query.data?.jobs.find((j) => j.status === "failed") ||
@@ -270,7 +282,22 @@ export function PipelineDetail() {
         eyebrow={`PIPELINE #${id}`}
         title={query.data?.pipeline.ref || "Pipeline details"}
         description="Inspect job logs and the CI configuration at this run’s commit."
-        action={query.data && <Status status={query.data.pipeline.status} />}
+        action={
+          <div className="pipeline-detail-actions">
+            {query.data && <Status status={query.data.pipeline.status} />}
+            <Button
+              variant="outline"
+              onClick={() => refresh.mutate()}
+              disabled={query.isFetching || refresh.isPending}
+            >
+              <RefreshCw
+                size={14}
+                className={refresh.isPending ? "spin" : undefined}
+              />
+              {refresh.isPending ? "Refreshing pipeline…" : "Refresh pipeline"}
+            </Button>
+          </div>
+        }
       />
       {query.data && (
         <div className="pipeline-meta">

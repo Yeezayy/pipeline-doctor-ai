@@ -141,6 +141,18 @@ export function PipelineEvidence({
             <Button
               variant="ghost"
               size="sm"
+              disabled={!job || trace.isFetching}
+              onClick={() => trace.refetch()}
+            >
+              <RefreshCw
+                size={13}
+                className={trace.isFetching ? "spin" : undefined}
+              />
+              {trace.error ? "Retry logs" : "Refresh logs"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               disabled={
                 !trace.data?.text ||
                 trace.isFetching ||
@@ -163,7 +175,7 @@ export function PipelineEvidence({
         <ErrorState error={tab === "logs" ? copy.error : null} />
         {trace.isLoading ? (
           <Loading text="Fetching sanitized job trace…" />
-        ) : (
+        ) : trace.error && !trace.data ? null : (
           <pre className="log-view" tabIndex={0} aria-label="Job log output">
             {(trace.data?.text || "No trace available.")
               .split("\n")
@@ -184,6 +196,11 @@ export function PipelineEvidence({
                 </Fragment>
               ))}
           </pre>
+        )}
+        {trace.error && trace.data && (
+          <p className="panel-note">
+            Refresh failed. Showing the last loaded log excerpt.
+          </p>
         )}
         {trace.data?.truncated && (
           <p className="panel-note">
