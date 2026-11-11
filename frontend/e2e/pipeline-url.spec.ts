@@ -139,7 +139,7 @@ test("pipeline tabs show highlighted YAML at the run commit and copy only source
   await expect(source).toBeVisible();
   expect(requests).toHaveLength(1);
   await page.screenshot({
-    path: "/private/tmp/pipeline-doctor-ci-desktop.png",
+    path: test.info().outputPath("pipeline-doctor-ci-desktop.png"),
     fullPage: true,
   });
 });
@@ -250,7 +250,7 @@ test("CI remains inspectable when no jobs exist and fits mobile", async ({
     ),
   ).toBe(false);
   await page.screenshot({
-    path: "/private/tmp/pipeline-doctor-ci-mobile.png",
+    path: test.info().outputPath("pipeline-doctor-ci-mobile.png"),
     fullPage: true,
   });
 });
