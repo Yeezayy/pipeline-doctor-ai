@@ -71,6 +71,7 @@ def sign_in(client):
 
 def test_pkce_encrypted_session_and_no_token_disclosure(client, oauth_config):
     assert client.get("/api/projects").status_code == 401
+    assert client.post("/api/analyses/private/fixes").status_code == 401
     assert client.get("/api/settings").json()["auth_mode"] == "gitlab"
     params, callback = sign_in(client)
     assert params["code_challenge_method"] == ["S256"]
@@ -209,6 +210,7 @@ def test_oauth_csrf_and_logout_even_when_provider_down(client, oauth_config, mon
     sign_in(client)
     csrf = client.get("/api/auth/me").json()["csrf_token"]
     assert client.post("/api/projects", json={"gitlab_id": 1}, headers=HEADERS).status_code == 403
+    assert client.post("/api/analyses/private/fixes", headers=HEADERS).status_code == 403
     assert (
         client.post("/api/auth/logout", headers={**HEADERS, "X-CSRF-Token": "wrong"}).status_code
         == 403
@@ -387,6 +389,7 @@ def test_two_users_cannot_read_mutate_or_list_each_others_data(client, oauth_con
         assert other.get("/api/projects").json() == []
         assert other.get("/api/analyses").json() == []
         assert other.get(f"/api/analyses/{analysis_id}").status_code == 404
+        assert other.post(f"/api/analyses/{analysis_id}/fixes", headers=headers).status_code == 404
         assert other.delete(f"/api/analyses/{analysis_id}", headers=headers).status_code == 404
         assert (
             other.post(

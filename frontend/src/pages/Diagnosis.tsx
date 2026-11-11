@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { api } from "../services/api";
 import { Button } from "../components/ui/button";
+import { FixPreview } from "../components/FixPreview";
 import { Empty, ErrorState, Loading, PageHeading } from "../components/common";
 import type { Analysis } from "../types";
 
@@ -264,6 +265,7 @@ export function Diagnosis() {
               Nothing has been changed. Review and test every recommendation.
             </div>
           </section>
+          <FixPreview key={analysis.id} analysis={analysis} />
           {d.hypotheses.length > 0 && (
             <section className="panel hypotheses">
               <div className="panel-heading">

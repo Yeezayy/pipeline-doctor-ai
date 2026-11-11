@@ -15,7 +15,8 @@ from app.core.security import excerpt, redact
 from app.integrations.gitlab import gitlab_client
 from app.models.entities import Analysis, Message
 from app.schemas.diagnosis import AnalysisOut, AnalyzeRequest, ChatRequest, PipelineDiagnosis
-from app.services import demo, pipelines
+from app.schemas.fix import FixOut
+from app.services import demo, fixes, pipelines
 
 router = APIRouter()
 settings_router = APIRouter()
@@ -215,6 +216,17 @@ def analysis_detail(analysis_id: str, db: Session = Depends(get_db)):
 def delete_analysis(analysis_id: str, db: Session = Depends(get_db)):
     db.delete(get_analysis(db, analysis_id))
     db.commit()
+
+
+@router.post("/analyses/{analysis_id}/fixes", response_model=FixOut)
+async def propose_fix(analysis_id: str, db: Session = Depends(get_db)):
+    analysis = get_analysis(db, analysis_id)
+    project = pipelines.connected_project(db, analysis.project_id)
+    await acquire_slot()
+    try:
+        return await fixes.propose(analysis, project)
+    finally:
+        ai_slots.release()
 
 
 @router.post("/analyses/{analysis_id}/messages", response_model=AnalysisOut)

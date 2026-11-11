@@ -22,6 +22,8 @@ Compose publishes only loopback ports. Anonymous demo and shared-token `AUTH_MOD
 
 Logs, files and user context are untrusted model data. A system instruction rejects embedded directives; evidence quotes are checked against the actual supplied excerpts. This is defense in depth, not a guarantee against prompt injection or hallucinations. The model has no shell, write, retry or MR tools. Recommendations are rendered as text, not raw HTML/Markdown executable content. Fixes cannot be marked tested. Never paste credentials into chat.
 
+Patch generation reads the root CI file at the saved commit and sends a sanitized copy with the saved diagnosis to the configured provider. Exact replacement matches, overlap checks and YAML syntax checks precede diff generation; edits involving masked credentials are rejected. Unrelated secrets are excluded from diff context where necessary. A returned patch is an untested suggestion: these checks do not prove GitLab schema validity or a correct fix. Generation has no repository-write, CI Lint or job-execution capability, and patch previews are not persisted server-side.
+
 Native JSON Schema output remains the default. The explicit `LLM_OUTPUT_MODE=prompt_json` compatibility mode sends the schema in the system prompt without `response_format` or tools. Plain replies must pass strict local JSON/Pydantic validation before saving; malformed/truncated replies, extra fields and invalid types fail closed. Both modes retain masking and evidence checks. There is no automatic repair, paid-model fallback or silent demo substitution. Successful schema validation is not proof that a diagnosis is factually correct.
 
 ## Abuse/cost boundary

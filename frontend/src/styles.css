@@ -1219,6 +1219,86 @@ footer {
   font-size: 9px;
   color: #7e8c9b;
 }
+.patch-panel .panel-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.patch-intro,
+.patch-result {
+  padding: 0 22px 20px;
+}
+.patch-intro {
+  margin: 0;
+  color: #8e9db3;
+  font-size: 11px;
+}
+.patch-result h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.patch-result p {
+  color: #9cacc1;
+  font-size: 12px;
+}
+.patch-result h4 {
+  margin: 18px 0 8px;
+  font-size: 12px;
+}
+.patch-base {
+  overflow-wrap: anywhere;
+}
+.patch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+.patch-checks {
+  color: #9dc8ac;
+  font-size: 10px;
+}
+.patch-diff {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid #2b3545;
+  border-radius: 7px;
+  background: #0e1118;
+  overflow: auto;
+  max-height: 520px;
+  font-size: 11px;
+  line-height: 1.9;
+  white-space: pre;
+}
+.diff-added {
+  color: #ace0bd;
+  background: #8bcd9b10;
+}
+.diff-removed {
+  color: #e3a3ad;
+  background: #dd8a9610;
+}
+.diff-header {
+  color: #9abbe5;
+}
+.patch-steps,
+.patch-limitations ul {
+  padding-left: 20px;
+  color: #99a9be;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.patch-steps li,
+.patch-limitations li {
+  margin-bottom: 8px;
+}
+.patch-panel .error-box {
+  margin: 0 22px 18px;
+}
+.patch-result .error-box {
+  margin: 0 0 16px;
+}
 .diagnosis-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;

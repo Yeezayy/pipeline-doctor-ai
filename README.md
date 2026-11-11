@@ -41,6 +41,7 @@ This is a **functional, local-development MVP**, not an autonomous repair agent 
 - **Public landing:** a SaaS-style presentation, actual demo captures and entry points to the workbench or account login. The dashboard lives at `/dashboard`.
 - **Interactive 3D:** a Three.js pipeline illustration built with React Three Fiber and Drei. Select stages, orbit and pause motion. It is illustrative, not live GitLab data. The renderer is lazy-loaded, motion stops off-screen/in background tabs, reduced motion is respected, and an accessible fallback works without WebGL.
 - **Structured AI diagnosis:** probable root cause, severity, confidence estimate, exact evidence excerpts, hypotheses, explanation and recommended fixes, validated with Pydantic through LangChain.
+- **Suggested CI patches:** generate a reviewable `.gitlab-ci.yml` diff from a saved diagnosis. The backend matches edits to the file at the saved commit and checks YAML syntax before returning a patch; missing context is reported explicitly. Copy or download the diff for manual review and validation.
 - **Contextual chat:** follow-up questions using the selected diagnosis, pipeline metadata and recent conversation; no claim of access to the full original trace.
 - **History:** persistent analyses and conversations, individual deletion and configurable retention.
 - **Focused UI:** responsive dark workbench, project switching, pipeline status filters, current-page search by branch/commit/pipeline ID, loading/error/empty states and explicit demo/live labels.
@@ -229,6 +230,26 @@ All variables in `.env.example` are backend/Compose configuration; no provider s
 - `LOG_MAX_CHARS`: default `16000`, range `1000–64000`; redacted head/tail excerpt. CI config has a separate 8000-character budget; user context is limited to 4000 characters.
 - `BACKEND_PORT`: optional Compose host port override, default `8000`.
 
+## Generate a CI patch
+
+Open a saved diagnosis and click **Generate patch** under **Suggested CI patch**. Live generation uses the same configured LLM provider as diagnosis/chat. The backend endpoint is `POST /api/analyses/{analysis_id}/fixes`; it uses the current account's analysis and connected project, reads the root `.gitlab-ci.yml` at the analysis's saved commit and returns either a diff or `status=needs_context`.
+
+For a returned patch:
+
+1. Review its base commit, explanation, diff and limitations.
+2. Copy it or download **pipeline-doctor-ci.patch**.
+3. Check it against a checkout of the indicated commit:
+
+```bash
+git apply --check --unidiff-zero pipeline-doctor-ci.patch
+```
+
+The server checks exact source matches and YAML syntax. **GitLab CI validation and jobs are not run**; review the suggested verification steps and validate the configuration before applying anything. Patch generation does not write to GitLab or the local repository, and the existing `read_api` scope is sufficient. Patches are returned on demand and are not saved in the database.
+
+This first version supports complete root CI files up to **16,000 characters**, with at most six targeted edits. Included files and custom CI file paths are not resolved. Changes that cannot be matched uniquely, overlap, touch masked credentials or produce invalid YAML are rejected. Unrelated secrets are omitted from diff context when necessary, which is why the check command allows zero-context hunks.
+
+In the demo, diagnose pipeline **#1043** and generate a fixed example changing its incompatible job image to `python:3.12-slim`. The other sample incidents return a request for more context instead of inventing a source change. Public demo patches use fixtures only, with no API or LLM calls.
+
 ## Architecture
 
 ```mermaid
@@ -292,7 +313,7 @@ CI runs Ruff, the backend suite against PostgreSQL (plus a SQLite migration test
 ## Roadmap
 
 - **V1 — Functional MVP:** GitLab browsing, sanitized job traces, structured diagnosis, contextual chat, history, demo, Docker and CI.
-- **V2 — AI Fix Assistant:** reviewable YAML diffs, GitLab CI Lint validation, approved merge requests and fix history.
+- **V2 — AI Fix Assistant:** root CI patch previews with source matching and YAML syntax checks are implemented. Next: GitLab CI Lint validation, approved merge requests and saved fix history.
 - **V3 — Advanced DevOps:** webhooks, queued investigations, documentation/incident RAG, diagnostic evaluation metrics, monitoring, hardened Kubernetes deployment and possible GitHub Actions/Jenkins support.
 
 Planned features are not claimed as implemented. Contributions welcome: [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -3,6 +3,7 @@ import type {
   AuthSession,
   AvailableProject,
   CIConfig,
+  FixPatch,
   Job,
   LogoutResult,
   Pipeline,
@@ -104,6 +105,7 @@ const liveApi = {
     post<Analysis>("/analyses", { project_id, pipeline_id, job_id, context }),
   history: () => request<Analysis[]>("/analyses"),
   analysis: (id: string) => request<Analysis>(`/analyses/${id}`),
+  fixes: (id: string) => post<FixPatch>(`/analyses/${id}/fixes`, {}),
   chat: (id: string, message: string) =>
     post<Analysis>(`/analyses/${id}/messages`, { message }),
   remove: (id: string) =>

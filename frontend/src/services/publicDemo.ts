@@ -4,6 +4,7 @@ import type {
   AvailableProject,
   CIConfig,
   Diagnosis,
+  FixPatch,
   Job,
   LogoutResult,
   Pipeline,
@@ -271,6 +272,47 @@ export const demoApi = {
   },
   history: async (): Promise<Analysis[]> => clone(analyses),
   analysis: async (id: string): Promise<Analysis> => clone(getAnalysis(id)),
+  fixes: async (id: string): Promise<FixPatch> => {
+    const analysis = getAnalysis(id);
+    const result: FixPatch = {
+      analysis_id: id,
+      base_sha: analysis.pipeline.sha,
+      path: ".gitlab-ci.yml",
+      source: "demo",
+      status: "needs_context",
+      summary: "More context is needed before proposing a patch",
+      explanation:
+        "This simulated incident needs repository files or project settings that are not available. Try pipeline #1043 for a fixed example patch replacing an incompatible job image.",
+      diff: null,
+      applicability_checked: false,
+      yaml_syntax_valid: null,
+      verification_steps: [],
+      limitations: [
+        "Fixed simulated example; no LLM request was made.",
+        "Only the root .gitlab-ci.yml is available; included files are not expanded. GitLab CI validation and jobs have not been run.",
+      ],
+      fixes_tested: false,
+    };
+    if (analysis.pipeline_id !== 1043) return result;
+    return {
+      ...result,
+      status: "ready",
+      summary: "Use a Python image for the integration test job",
+      explanation:
+        "The simulated job runs Python in an Alpine image that does not provide it. This example changes only the job image.",
+      diff: "--- a/.gitlab-ci.yml\n+++ b/.gitlab-ci.yml\n@@ -6 +6 @@\n-  image: alpine:3.21\n+  image: python:3.12-slim\n",
+      applicability_checked: true,
+      yaml_syntax_valid: true,
+      verification_steps: [
+        "Check that your checkout matches base commit " +
+          analysis.pipeline.sha +
+          ".",
+        "git apply --check --unidiff-zero pipeline-doctor-ci.patch",
+        "Validate the configuration with GitLab CI Lint before applying or rerunning jobs.",
+        "Review dependencies required by the integration tests and rerun the affected job.",
+      ],
+    };
+  },
   chat: async (id: string, message: string): Promise<Analysis> => {
     const analysis = getAnalysis(id);
     if (!message.trim() || message.length > 4000)

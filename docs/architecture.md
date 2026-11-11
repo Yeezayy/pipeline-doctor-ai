@@ -32,6 +32,8 @@ One LangChain `ChatOpenAI` call produces a Pydantic diagnosis. There is no agent
 
 Chat uses the persisted diagnosis and pipeline metadata plus the last 10 messages. It cannot recover omitted original logs or execute fixes. Demo chat is a plainly marked fixed template, not a fake LLM.
 
+Patch previews use the saved diagnosis and the root CI file at its immutable commit. The model proposes bounded text replacements; the server rejects ambiguous, overlapping or secret-bearing edits, checks the resulting YAML syntax and builds the unified diff itself. Patch requests share the two-request AI concurrency limit and the analysis/project ownership checks. Results are returned on demand, without persisting CI source or patches. The UI supports review, copying and downloading; GitLab validation, application and job execution remain manual.
+
 ### PostgreSQL by default in Compose, SQLite for a fast local loop
 
 Alembic, not `create_all`, owns the application schema. Projects contain source and GitLab identity. Analyses contain IDs, sanitized job name, pipeline metadata and structured diagnosis JSON. Conversation messages have cascading deletion. JSON is adequate for the initial flexible diagnosis schema; reporting can normalize selected fields later. SQLite uses foreign-key enforcement too.

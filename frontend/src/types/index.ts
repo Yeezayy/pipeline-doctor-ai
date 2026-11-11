@@ -90,3 +90,18 @@ export interface Analysis {
   created_at: string;
   messages: Message[];
 }
+export interface FixPatch {
+  analysis_id: string;
+  base_sha: string;
+  path: ".gitlab-ci.yml";
+  source: string;
+  status: "ready" | "needs_context";
+  summary: string;
+  explanation: string;
+  diff: string | null;
+  applicability_checked: boolean;
+  yaml_syntax_valid: boolean | null;
+  verification_steps: string[];
+  limitations: string[];
+  fixes_tested: false;
+}

@@ -111,3 +111,23 @@ test("all six simulated failure examples are explorable offline", async ({
     await expect(page.locator(".evidence")).not.toBeEmpty();
   }
 });
+
+test("the public patch preview is simulated and makes no API requests", async ({
+  page,
+}) => {
+  const apiRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.includes("/api/"))
+      apiRequests.push(request.url());
+  });
+  await page.goto("./#/pipelines/demo-1/1043");
+  await page.getByRole("button", { name: "Diagnose this job" }).click();
+  await page
+    .getByRole("button", { name: "Generate patch", exact: true })
+    .click();
+  await expect(page.getByLabel("Proposed CI patch")).toContainText(
+    "+  image: python:3.12-slim",
+  );
+  await expect(page.locator(".patch-base")).toContainText("Simulated");
+  expect(apiRequests).toEqual([]);
+});
